@@ -2,7 +2,7 @@
 node_modules/
 
 # Dados locais — nunca comitar backups pessoais
-data/arquivo_poetico_backup.json
+data/
 
 # Arquivos de sistema
 .DS_Store
