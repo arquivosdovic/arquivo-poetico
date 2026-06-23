@@ -1,0 +1,85 @@
+/* --- Navegação por Abas --- */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease-out; /* Suaviza a troca */
+}
+
+.active-tab {
+    border-bottom: 3px solid #1d4ed8;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+/* --- Formulários --- */
+.form-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+input, select, textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* --- Grid de Listagem (Livros e Partes) --- */
+#lista-livros, #lista-partes, #lista-secoes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding-top: 1rem;
+}
+
+/* Isso garante que a seleção apareça mesmo quando o textarea NÃO é o foco principal */
+#p-texto::selection {
+    background-color: #3b82f6 !important; 
+    color: white !important;
+}
+
+/* Truque para navegadores que suportam a persistência visual */
+#p-texto:not(:focus)::selection {
+    background-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+/* --- Tabela de Poemas (Scroll horizontal no mobile) --- */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* --- Animação Simples --- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Scrollbar Customizada (Opcional, estilo do Arquivo Poético) --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+/* --- Hidden (substitui o atributo HTML hidden que o Five Server remove) --- */
+.hidden {
+    display: none !important;
+}

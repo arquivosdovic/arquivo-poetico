@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquivo Poético - Sistema Integral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="assets/icons/favicon-180.png">
+    <script src="assets/js/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-sans pb-20">
+
+    <header class="bg-white border-b p-6 mb-8 shadow-sm">
+        <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-4">
+            <h1 class="text-2xl font-light tracking-tight">Arquivo <span class="font-bold text-blue-700">Poético</span>
+            </h1>
+            <div class="flex items-center gap-2">
+                <input type="file" id="import-json" class="hidden" accept=".json" onchange="importarJSON(event)">
+                <button onclick="document.getElementById('import-json').click()"
+                    class="border border-blue-600 text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition text-sm font-medium">Importar
+                    JSON</button>
+                <button onclick="exportarJSON()"
+                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition text-sm font-medium">Baixar
+                    JSON</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Datalists compartilhadas entre a página principal e o modal de
+         Poema (carregado sob demanda). Ficam aqui pra funcionar mesmo
+         antes do modal de Poema ser aberto pela primeira vez. -->
+    <datalist id="sugestoes-sinais"></datalist>
+    <datalist id="sugestoes-pessoas"></datalist>
+
+    <main class="max-w-6xl mx-auto px-4">
+        <nav class="flex border-b mb-8 space-x-8 overflow-x-auto">
+            <button id="btn-livros" onclick="openTab('livros')"
+                class="tab-btn pb-2 font-medium active-tab whitespace-nowrap">Livros</button>
+            <button id="btn-coletaneas" onclick="openTab('coletaneas')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Coletâneas</button>
+            <button id="btn-partes" onclick="openTab('partes')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Partes</button>
+            <button id="btn-secoes" onclick="openTab('secoes')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Seções</button>
+            <button id="btn-poemas" onclick="openTab('poemas')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Poemas</button>
+            <button id="btn-prosas" onclick="openTab('prosas')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Prosas</button>
+            <button id="btn-elementos" onclick="openTab('elementos')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Elementos Textuais</button>
+            <button id="btn-estrutura" onclick="openTab('estrutura')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Estrutura</button>
+            <button id="btn-exportar-filtrado" onclick="openTab('exportar-filtrado')"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Exportação</button>
+            <button id="btn-estatisticas" onclick="openTab('estatisticas'); renderEstatisticas()"
+                class="tab-btn pb-2 font-medium whitespace-nowrap">Estatísticas</button>
+        </nav>
+
+        <section id="livros" class="tab-content active">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Obras</h2>
+                <button onclick="prepararNovo('livro')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Novo Livro</button>
+            </div>
+            <div id="lista-livros" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <section id="coletaneas" class="tab-content">
+            <div style="display:flex; gap:24px; align-items:flex-start;">
+
+                <!-- Coluna esquerda: lista de coletâneas -->
+                <div style="width:220px; flex-shrink:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-size:13px; font-weight:500; color:var(--color-text-secondary);">Suas
+                            coletâneas</span>
+                    </div>
+                    <div id="lista-coletaneas"></div>
+                    <p style="font-size:10px; color:var(--color-text-tertiary); margin-top:10px; line-height:1.5;">
+                        Cadastre o livro com tipo "Coletânea" na aba Livros. Ele aparece aqui automaticamente.
+                    </p>
+                </div>
+
+                <!-- Coluna direita: editor de curadoria -->
+                <div style="flex:1; min-width:0;">
+                    <div id="editor-coletanea"></div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="partes" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Partes (Divisões Internas)</h2>
+                <button onclick="prepararNovo('parte')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Nova Parte</button>
+            </div>
+            <select id="filtro-livro-partes" onchange="setFiltroLivroPartes(this.value)"
+                style="width:auto; margin-bottom:1rem;">
+                <option value="">-- Todos os livros --</option>
+            </select>
+            <div id="lista-partes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <section id="secoes" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Seções</h2>
+                <button onclick="prepararNovo('secao')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Nova Seção</button>
+            </div>
+            <div class="flex flex-wrap gap-3 mb-4">
+                <select id="filtro-livro-secoes" onchange="setFiltroLivroSecoes(this.value)"
+                    style="width:auto; margin-bottom:0;">
+                    <option value="">-- Todos os livros --</option>
+                </select>
+                <select id="filtro-parte-secoes" onchange="setFiltroParteSecoes(this.value)"
+                    style="width:auto; margin-bottom:0;">
+                    <option value="">-- Todas as partes --</option>
+                </select>
+            </div>
+            <div id="lista-secoes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+        <section id="poemas" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Conteúdo Literário</h2>
+                <button onclick="prepararNovo('poema')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Novo Poema</button>
+            </div>
+            <div class="flex flex-wrap gap-3 mb-4 items-start">
+                <input type="text" id="busca-poemas" oninput="setFiltroPoemas(this.value)"
+                    placeholder="Buscar por título, ano, tema, pessoa ou livro..." class="flex-1 min-w-[220px] mb-0">
+                <select id="ordenar-poemas" onchange="setOrdenacaoPoemas(this.value)"
+                    style="width:auto; margin-bottom:0;">
+                    <option value="padrao">Ordem padrão (estrutura)</option>
+                    <option value="data-esc-desc">Escrito em: mais recente primeiro</option>
+                    <option value="data-esc-asc">Escrito em: mais antigo primeiro</option>
+                    <option value="titulo">Título (A-Z)</option>
+                </select>
+                <select id="status-poemas" onchange="setStatusPoemas(this.value)"
+                    style="width:auto; margin-bottom:0;">
+                    <option value="todos">Todos os status</option>
+                    <option value="publicados">Só publicados 🟢</option>
+                    <option value="rascunhos">Só rascunhos ⚪</option>
+                </select>
+                <select id="filtro-livro-poemas" onchange="setFiltroLivroPoemas(this.value)"
+                    style="width:180px; margin-bottom:0;">
+                    <option value="">-- Todos os livros --</option>
+                </select>
+            </div>
+
+            <div id="barra-acoes-poemas"
+                class="hidden mb-3 p-3 bg-rose-50 border border-rose-200 rounded-lg flex flex-wrap items-center gap-2">
+                <span id="contador-selecao-poemas" class="text-xs font-bold text-rose-700 whitespace-nowrap"></span>
+                <input type="text" id="bulk-pessoa-input" list="sugestoes-pessoas"
+                    placeholder="Nome da pessoa..." class="flex-1 min-w-[160px] mb-0">
+                <button onclick="aplicarPessoaEmMassa()"
+                    class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">+
+                    Dedicar</button>
+                <button onclick="removerPessoaEmMassa()"
+                    class="bg-white border border-rose-300 text-rose-600 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">−
+                    Remover</button>
+                <input type="text" id="bulk-sinal-input" list="sugestoes-sinais"
+                    placeholder="Sinalização/tema..." class="flex-1 min-w-[160px] mb-0">
+                <button onclick="aplicarSinalEmMassa()"
+                    class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">+
+                    Marcar</button>
+                <button onclick="removerSinalEmMassa()"
+                    class="bg-white border border-blue-300 text-blue-600 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">−
+                    Remover</button>
+                <button onclick="limparSelecaoPoemas()"
+                    class="text-xs text-gray-500 underline whitespace-nowrap">Cancelar seleção</button>
+            </div>
+
+            <div class="overflow-x-auto bg-white rounded shadow">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-sm">
+                        <tr>
+                            <th class="p-4 border-b w-8"><input type="checkbox" id="check-todos-poemas"
+                                    onclick="toggleSelecaoTodosPoemas(this.checked)"></th>
+                            <th class="p-4 border-b">ID / Título</th>
+                            <th class="p-4 border-b">Escrito em</th>
+                            <th class="p-4 border-b">Estrutura</th>
+                            <th class="p-4 border-b">Status</th>
+                            <th class="p-4 border-b text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-poemas" class="text-sm"></tbody>
+                </table>
+            </div>
+        </section>
+        <section id="prosas" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Prosas Poéticas</h2>
+                <button onclick="prepararNovo('prosa')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Nova Prosa</button>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <input type="text" id="busca-prosas" oninput="setFiltroProsas(this.value)"
+                    placeholder="Buscar por título, ano, etiqueta ou pessoa..." class="flex-1">
+                <select id="filtro-livro-prosas" onchange="setFiltroLivroProsa(this.value)"
+                    class="w-56 border p-2 rounded text-sm">
+                    <option value="">-- Todos os livros --</option>
+                </select>
+            </div>
+            <div class="overflow-x-auto bg-white rounded shadow">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-100 text-sm">
+                        <tr>
+                            <th class="p-4 border-b">Título / Etiquetas</th>
+                            <th class="p-4 border-b">Data</th>
+                            <th class="p-4 border-b">Vínculo</th>
+                            <th class="p-4 border-b text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-prosas" class="text-sm"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="elementos" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Elementos e Respiros</h2>
+                <button onclick="prepararNovo('elemento')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">Novo Elemento</button>
+            </div>
+            <select id="filtro-livro-elementos" onchange="setFiltroLivroElementos(this.value)"
+                style="width:auto; margin-bottom:1rem;">
+                <option value="">-- Todos os livros --</option>
+            </select>
+            <div id="lista-elementos" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+        </section>
+
+        <section id="estrutura" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Estrutura do Livro</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 mb-3">
+                <select id="estrutura-livro-select" onchange="setLivroEstrutura(this.value)"
+                    style="width:auto; margin-bottom:0;">
+                    <option value="">-- Escolha um livro --</option>
+                </select>
+                <button onclick="marcarTodosEstrutura(true)"
+                    class="text-[10px] font-bold text-blue-600 uppercase hover:underline">Selecionar tudo</button>
+                <button onclick="marcarTodosEstrutura(false)"
+                    class="text-[10px] font-bold text-red-400 uppercase hover:underline">Limpar seleção</button>
+            </div>
+
+            <!-- Barra flutuante de ações da seleção -->
+            <div id="barra-acoes-estrutura"
+                class="hidden mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-wrap items-center gap-3">
+                <span id="contador-estrutura" class="text-xs font-bold text-blue-700 whitespace-nowrap"></span>
+                <button onclick="exportarSelecaoEstrutura()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded text-xs font-bold whitespace-nowrap shadow hover:bg-blue-700">
+                    Exportar selecionados →
+                </button>
+                <span class="text-[10px] text-gray-400">Gera um JSON flat com os itens marcados.</span>
+            </div>
+
+            <div id="estrutura-arvore" class="bg-white rounded-xl border border-gray-200 p-5">
+                <p class="text-gray-400 text-sm">Escolha um livro acima pra ver a árvore completa, com a sequência
+                    de cada item — útil pra confirmar se a reordenação automática ficou certa.</p>
+            </div>
+        </section>
+
+        <section id="exportar-filtrado" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Exportação</h2>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Gera um JSON só com o que você escolher — útil pra mandar um
+                recorte específico pra uma IA processar, sem o resto do arquivo.</p>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+                <div>
+                    <label class="form-label">Tipo de conteúdo</label>
+                    <div class="flex gap-4 mb-2">
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="exp-tipo-poema"
+                                checked style="width:auto;margin:0;"> Poemas</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="exp-tipo-prosa"
+                                checked style="width:auto;margin:0;"> Prosas</label>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Incluir só de quem (Pessoas)</label>
+                        <input type="text" id="exp-pessoas-incluir" list="sugestoes-pessoas"
+                            placeholder="Separe vários nomes por vírgula">
+                    </div>
+                    <div>
+                        <label class="form-label">Incluir só com tema (Sinalizações)</label>
+                        <input type="text" id="exp-temas-incluir" list="sugestoes-sinais"
+                            placeholder="Separe vários por vírgula">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Excluir se tiver o tema (Sinalizações)</label>
+                    <input type="text" id="exp-temas-excluir" list="sugestoes-sinais"
+                        placeholder="Separe vários por vírgula">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Data de escrita — De</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="exp-data-de-dia" placeholder="Dia" min="1" max="31">
+                            <input type="number" id="exp-data-de-mes" placeholder="Mês" min="1" max="12">
+                            <input type="number" id="exp-data-de-ano" placeholder="Ano" min="1900" max="2100">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Data de escrita — Até</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="exp-data-ate-dia" placeholder="Dia" min="1" max="31">
+                            <input type="number" id="exp-data-ate-mes" placeholder="Mês" min="1" max="12">
+                            <input type="number" id="exp-data-ate-ano" placeholder="Ano" min="1900" max="2100">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 md:col-span-2 -mt-2">
+                        Preencha só o que souber. Meses totalmente cobertos pelo intervalo aparecem mesmo sem dia cadastrado.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="form-label">Status</label>
+                    <select id="exp-status">
+                        <option value="todos">Todos os status</option>
+                        <option value="publicados">Só publicados</option>
+                        <option value="rascunhos">Só rascunhos</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="form-label">Restringir a estes Livros (deixe tudo desmarcado pra incluir
+                        todos)</label>
+                    <div id="exp-livros-checks"
+                        class="flex flex-wrap gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm max-h-32 overflow-y-auto">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Incluir também estas Coletâneas (conteúdo completo, sem os
+                        filtros acima)</label>
+                    <div id="exp-coletaneas-checks"
+                        class="flex flex-wrap gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 text-sm max-h-32 overflow-y-auto">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 pt-2 border-t">
+                    <button onclick="previsualizarExportacaoFiltrada()"
+                        class="bg-gray-100 text-gray-700 px-4 py-2 rounded font-bold text-sm">Pré-visualizar
+                        contagem</button>
+                    <button onclick="executarExportacaoFiltrada()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow font-bold text-sm">Baixar JSON
+                        filtrado</button>
+                    <span id="exp-resultado" class="text-xs text-gray-500"></span>
+                </div>
+
+                <!-- Separador + exportação aninhada completa -->
+                <div class="pt-4 border-t border-dashed border-gray-200">
+                    <p class="text-xs text-gray-400 mb-3">
+                        <strong class="text-gray-600">Exportar tudo aninhado</strong> — gera um JSON com o acervo
+                        inteiro em estrutura de árvore real (Livro → Parte → Seção → Poema/Prosa dentro uns dos outros),
+                        sem nenhum filtro. Ideal pra enviar o arquivo completo pra uma IA processar de uma vez.
+                    </p>
+                    <button onclick="exportarTudoAninhado()"
+                        class="bg-indigo-600 text-white px-4 py-2 rounded shadow font-bold text-sm hover:bg-indigo-700">
+                        Exportar tudo aninhado (para IA) →
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="estatisticas" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-semibold">Estatísticas</h2>
+            </div>
+
+            <div id="est-resumo" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <h3 class="text-sm font-bold text-gray-600 mb-3">Textos por Ano</h3>
+                    <canvas id="grafico-ano" height="220"></canvas>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <h3 class="text-sm font-bold text-gray-600 mb-3">Textos por Livro / Coletânea</h3>
+                    <canvas id="grafico-livro" height="220"></canvas>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <h3 class="text-sm font-bold text-gray-600 mb-3">Etiquetas mais frequentes</h3>
+                    <canvas id="grafico-temas" height="220"></canvas>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                    <h3 class="text-sm font-bold text-gray-600 mb-3">Pessoas mais dedicadas</h3>
+                    <canvas id="grafico-pessoas" height="220"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-bold text-gray-600">Palavras mais frequentes</h3>
+                    <select id="est-livro-palavras" onchange="renderEstatisticas()" style="width:auto; margin:0;">
+                        <option value="">-- Todo o acervo --</option>
+                    </select>
+                </div>
+                <div id="lista-palavras" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm"></div>
+            </div>
+        </section>
+    </main>
+
+
+    <div id="modais-container"></div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

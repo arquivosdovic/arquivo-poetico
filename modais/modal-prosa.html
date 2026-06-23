@@ -1,0 +1,119 @@
+<div id="modal-prosa"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <h3 id="modal-prosa-titulo" class="text-2xl font-bold">Editar Prosa</h3>
+        <div class="flex items-center gap-1 ml-4">
+            <button type="button"
+                onclick="document.getElementById('form-prosa').requestSubmit()"
+                title="Salvar (atalho: Ctrl+Enter)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                aria-label="Salvar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <button type="button"
+                onclick="toggleModal('modal-prosa')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-gray-200"
+                aria-label="Fechar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+        <form id="form-prosa" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <input type="hidden" id="pr-edit-id">
+
+            <div class="md:col-span-2 space-y-4">
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2">
+                        <label class="form-label">Título</label>
+                        <input type="text" id="pr-titulo" required>
+                    </div>
+                    <div>
+                        <label class="form-label">Sequência</label>
+                        <input type="number" id="pr-sequencia" placeholder="Ex: 1">
+                    </div>
+                </div>
+
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label mb-2">Data de Escrita</label>
+                        <div class="grid grid-cols-5 gap-1">
+                            <input type="number" id="pr-data-esc-dia" placeholder="Dia" min="1" max="31" title="Dia">
+                            <input type="number" id="pr-data-esc-mes" placeholder="Mês" min="1" max="12" title="Mês">
+                            <input type="number" id="pr-data-esc-ano" placeholder="Ano" min="1900" max="2100" title="Ano">
+                            <input type="number" id="pr-data-esc-hora" placeholder="Hora" min="0" max="23" title="Hora">
+                            <input type="number" id="pr-data-esc-minuto" placeholder="Min" min="0" max="59" title="Minuto">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label mb-2">Data de Primeira Publicação</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <input type="number" id="pr-data-pub-dia" placeholder="Dia" min="1" max="31" title="Dia">
+                            <input type="number" id="pr-data-pub-mes" placeholder="Mês" min="1" max="12" title="Mês">
+                            <input type="number" id="pr-data-pub-ano" placeholder="Ano" min="1900" max="2100" title="Ano">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 md:col-span-2">Preencha só o que souber. O ano de publicação é sugerido automaticamente se o Destino pertencer a um livro já publicado.</p>
+                </div>
+
+                <div>
+                    <label class="form-label">Conteúdo da Prosa</label>
+                    <textarea id="pr-texto" class="h-64 leading-relaxed"></textarea>
+                </div>
+            </div>
+
+            <div class="space-y-4 bg-gray-50 p-4 rounded-lg border">
+                <label class="form-label">Filtrar por Livro (opcional)</label>
+                <select id="pr-destino-filtro" onchange="filtrarDestinoProsa(this.value)"
+                    class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs mb-2">
+                    <option value="">-- Todos os livros --</option>
+                </select>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destino (Vincular a:)</label>
+                <select id="pr-destino" onchange="autoPreencherDataPublicacao(this.value, 'pr')"
+                    class="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs mb-4 focus:ring-2 focus:ring-emerald-500">
+                    <option value="">-- Sem vínculo (Avulso) --</option>
+                </select>
+                <div id="pr-coletaneas-info" class="mb-4"></div>
+                <label class="form-label">Sinalizações (Etiquetas)</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="pr-sinal-input" list="sugestoes-sinais-prosa" class="text-sm flex-1"
+                        placeholder="Nova etiqueta...">
+                    <button type="button" onclick="adicionarTagProsa()"
+                        class="bg-blue-100 text-blue-700 px-3 rounded text-xs font-bold">+</button>
+                </div>
+                <div id="pr-tags-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white border rounded"></div>
+                <datalist id="sugestoes-sinais-prosa"></datalist>
+                <input type="hidden" id="pr-sinal">
+                <label class="form-label">Dedicado a / Sobre quem (Pessoas)</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="pr-pessoa-input" list="sugestoes-pessoas-prosa" class="text-sm flex-1"
+                        placeholder="Nome da pessoa...">
+                    <button type="button" onclick="adicionarPessoaProsa()"
+                        class="bg-rose-100 text-rose-700 px-3 rounded text-xs font-bold">+</button>
+                </div>
+                <div id="pr-pessoas-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white border rounded"></div>
+                <datalist id="sugestoes-pessoas-prosa"></datalist>
+                <input type="hidden" id="pr-pessoas">
+                <label class="form-label">Notas</label>
+                <textarea id="pr-notas" class="text-sm h-20"></textarea>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pr-pub">
+                    <label class="text-sm font-bold">Publicado</label>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 flex justify-end gap-2 border-t pt-4">
+                <button type="button" onclick="toggleModal('modal-prosa')"
+                    class="text-gray-600 px-4 py-2">Cancelar</button>
+                <button type="submit" class="bg-blue-700 text-white px-8 py-2 rounded font-bold">GRAVAR</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>

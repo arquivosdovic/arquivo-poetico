@@ -1,0 +1,74 @@
+<div id="modal-elemento"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg w-full max-w-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <h3 id="modal-elemento-titulo" class="text-xl font-bold">Novo Elemento</h3>
+        <div class="flex items-center gap-1 ml-4">
+            <button type="button"
+                onclick="document.getElementById('form-elemento').requestSubmit()"
+                title="Salvar (atalho: Ctrl+Enter)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                aria-label="Salvar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <button type="button"
+                onclick="toggleModal('modal-elemento')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-gray-200"
+                aria-label="Fechar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+        <form id="form-elemento" class="space-y-4">
+            <input type="hidden" id="el-edit-id">
+            <label class="form-label">Tipo de Elemento</label>
+            <select id="el-tipo" onchange="toggleCamposIntroducao()">
+                <option value="Introdução">Introdução</option>
+                <option value="Conteúdo Multimídia">Conteúdo Multimídia</option>
+                <option value="Comentário">Comentário</option>
+                <option value="Respiro (Imagem)">Respiro (Imagem)</option>
+                <option value="Posfácio">Posfácio</option>
+            </select>
+            <label class="form-label">Identificação / Nome <span class="text-gray-400 font-normal normal-case">(opcional)</span></label>
+            <input type="text" id="el-titulo" placeholder="Ex: Epígrafe, Nota de abertura, Respiro I...">
+            <label class="form-label">Vincular a (Livro/Parte/Seção)</label>
+            <select id="el-vinculo"></select>
+            <label class="form-label">Sequência</label>
+            <input type="number" id="el-sequencia" class="form-input mb-3" placeholder="Ex: 1">
+            <div id="campos-introducao" class="hidden space-y-4 border-l-4 border-blue-200 pl-4 py-2 bg-blue-50/30">
+                <div>
+                    <label class="form-label text-blue-800">Aviso de Conteúdo (Gatilhos/Notas)</label>
+                    <textarea id="el-aviso" class="h-20"
+                        placeholder="Ex: Contém temas de luto.&#10;Pode ser sensível para alguns leitores."></textarea>
+                </div>
+                <div>
+                    <label class="form-label text-blue-800">Versos pós-Introdução</label>
+                    <textarea id="el-pos-versos" class="h-20 font-serif"
+                        placeholder="Versos que aparecem após o texto introdutório..."></textarea>
+                </div>
+            </div>
+            <label class="form-label">Conteúdo (Texto)</label>
+            <textarea id="el-texto" class="h-24"></textarea>
+            <div class="mt-4">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Notas de Contexto</label>
+                <textarea id="el-notas"
+                    class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Ex: Este texto deve ficar logo abaixo da foto da capa..."></textarea>
+            </div>
+            <label class="form-label">Imagem (Para Respiros/Multimídia)</label>
+            <input type="file" id="el-img" accept="image/*">
+            <div class="flex justify-end gap-2 pt-4 border-t">
+                <button type="button" onclick="toggleModal('modal-elemento')"
+                    class="text-gray-600 px-4 py-2">Sair</button>
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded">Salvar</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>

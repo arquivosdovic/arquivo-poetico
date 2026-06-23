@@ -1,0 +1,108 @@
+<div id="modal-livro"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <h3 id="modal-livro-titulo" class="text-2xl font-bold">Cadastrar Livro</h3>
+        <div class="flex items-center gap-1 ml-4">
+            <button type="button"
+                onclick="document.getElementById('form-livro').requestSubmit()"
+                title="Salvar (atalho: Ctrl+Enter)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                aria-label="Salvar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <button type="button"
+                onclick="toggleModal('modal-livro')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-gray-200"
+                aria-label="Fechar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+        <form id="form-livro" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="hidden" id="l-edit-id">
+            <div class="md:col-span-2">
+                <label class="form-label">Título do Livro</label>
+                <input type="text" id="l-titulo" required>
+            </div>
+            <div>
+                <label class="form-label">Sequência</label>
+                <input type="number" id="l-sequencia" placeholder="Ex: 1">
+            </div>
+            <div>
+                <label class="form-label">Sigla Oficial</label>
+                <input type="text" id="l-sigla-oficial">
+            </div>
+            <div>
+                <label class="form-label">Sigla Pessoal</label>
+                <input type="text" id="l-sigla-pessoal">
+            </div>
+            <div class="md:col-span-2">
+                <label class="form-label">Data de Publicação</label>
+                <div class="grid grid-cols-3 gap-1">
+                    <input type="number" id="l-data-dia" placeholder="Dia" min="1" max="31" title="Dia">
+                    <input type="number" id="l-data-mes" placeholder="Mês" min="1" max="12" title="Mês">
+                    <input type="number" id="l-data-ano" placeholder="Ano" min="1900" max="2100" title="Ano">
+                </div>
+                <p class="text-[10px] text-gray-400 mt-1">Preencha só o que souber.</p>
+            </div>
+            <div>
+                <label class="form-label">Tipo</label>
+                <select id="l-tipo">
+                    <option value="Inéditos">Inéditos</option>
+                    <option value="Coletânea">Coletânea</option>
+                </select>
+            </div>
+            <div class="md:col-span-2">
+                <label class="form-label">Fase de Vida</label>
+                <input type="text" id="l-fase" list="sugestoes-fases"
+                    placeholder="Digite uma nova ou escolha uma já usada...">
+                <datalist id="sugestoes-fases"></datalist>
+            </div>
+            <div class="md:col-span-4">
+                <label class="form-label">Versos de Abertura</label>
+                <textarea id="l-abertura" class="h-16 font-serif"></textarea>
+            </div>
+            <div class="md:col-span-2">
+                <label class="form-label">Sinopse</label>
+                <textarea id="l-sinopse" class="h-24"></textarea>
+            </div>
+            <div class="md:col-span-2">
+                <label class="form-label">Descrição da Capa</label>
+                <textarea id="l-capa-desc" class="h-24"></textarea>
+            </div>
+            <div class="md:col-span-4 bg-gray-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="form-label text-blue-700">Capa (Upload)</label>
+                    <input type="file" id="l-capa" accept="image/*" class="mb-2">
+                    <label class="form-label">Frase da Capa</label>
+                    <input type="text" id="l-frase-capa">
+                </div>
+                <div>
+                    <label class="form-label">Texto da Contracapa</label>
+                    <textarea id="l-contracapa" class="h-24"></textarea>
+                </div>
+                <div>
+                    <label class="form-label">Orelha 1</label>
+                    <textarea id="l-orelha-1" class="h-24"></textarea>
+                </div>
+                <div>
+                    <label class="form-label">Orelha 2</label>
+                    <textarea id="l-orelha-2" class="h-24"></textarea>
+                </div>
+            </div>
+            <div class="md:col-span-4 flex justify-end gap-2 border-t pt-6">
+                <button type="button" onclick="toggleModal('modal-livro')"
+                    class="text-gray-600 px-4 py-2">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white px-8 py-2 rounded font-bold">SALVAR</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>

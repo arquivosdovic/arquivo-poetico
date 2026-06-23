@@ -1,0 +1,143 @@
+<div id="modal-poema"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-lg w-full max-w-5xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 bg-white flex-shrink-0">
+        <h3 id="modal-poema-titulo" class="text-2xl font-bold">Editar Poema</h3>
+        <div class="flex items-center gap-1 ml-4">
+            <button type="button"
+                onclick="document.getElementById('form-poema').requestSubmit()"
+                title="Salvar (atalho: Ctrl+Enter)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200"
+                aria-label="Salvar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <button type="button"
+                onclick="toggleModal('modal-poema')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors border border-gray-200"
+                aria-label="Fechar">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+        <form id="form-poema" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <input type="hidden" id="p-edit-id">
+            <div class="md:col-span-2">
+                <label class="form-label">Título</label>
+                <input type="text" id="p-titulo" class="font-bold text-lg" required>
+
+                <label class="form-label">Sequência</label>
+                <input type="number" id="p-sequencia">
+
+                <div class="mt-2 mb-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <label class="form-label mb-2">Data de Escrita</label>
+                    <div class="grid grid-cols-5 gap-1">
+                        <input type="number" id="p-data-esc-dia" placeholder="Dia" min="1" max="31" title="Dia">
+                        <input type="number" id="p-data-esc-mes" placeholder="Mês" min="1" max="12" title="Mês">
+                        <input type="number" id="p-data-esc-ano" placeholder="Ano" min="1900" max="2100" title="Ano">
+                        <input type="number" id="p-data-esc-hora" placeholder="Hora" min="0" max="23" title="Hora">
+                        <input type="number" id="p-data-esc-minuto" placeholder="Min" min="0" max="59" title="Minuto">
+                    </div>
+                    <label class="form-label mb-2 mt-3">Data de Primeira Publicação</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <input type="number" id="p-data-pub-dia" placeholder="Dia" min="1" max="31" title="Dia">
+                        <input type="number" id="p-data-pub-mes" placeholder="Mês" min="1" max="12" title="Mês">
+                        <input type="number" id="p-data-pub-ano" placeholder="Ano" min="1900" max="2100" title="Ano">
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">Preencha só o que souber — qualquer campo pode ficar em branco. O ano de publicação é sugerido automaticamente se o Destino escolhido pertencer a um livro já publicado.</p>
+                </div>
+
+                <label class="form-label">Texto</label>
+                <div class="flex flex-wrap items-center gap-2 mb-1 p-2 bg-slate-50 border border-slate-200 rounded-t-md">
+                    <button type="button" onclick="wrapText('**', '**')"
+                        class="w-8 h-8 bg-white border rounded hover:bg-slate-100 font-bold" title="Negrito">B</button>
+                    <button type="button" onclick="wrapText('_', '_')"
+                        class="w-8 h-8 bg-white border rounded hover:bg-slate-100 italic" title="Itálico">I</button>
+                    <button type="button" onclick="wrapText('<u>', '</u>')"
+                        class="w-8 h-8 bg-white border rounded hover:bg-slate-100 underline" title="Sublinhado">U</button>
+                    <div class="h-6 w-px bg-slate-300 mx-1"></div>
+                    <button type="button" id="toolAlign-left" onclick="setAlign('left')"
+                        class="w-8 h-8 bg-white border rounded hover:bg-slate-100 text-xs"
+                        title="Alinhar à esquerda">⬅</button>
+                    <button type="button" id="toolAlign-right" onclick="setAlign('right')"
+                        class="w-8 h-8 bg-white border rounded hover:bg-slate-100 text-xs"
+                        title="Alinhar à direita">➡</button>
+                    <div class="h-6 w-px bg-slate-300 mx-1"></div>
+                    <div class="flex items-center gap-1 bg-white border rounded px-1">
+                        <input type="color" id="toolColor" class="w-6 h-6 cursor-pointer border-none bg-transparent"
+                            title="Paleta de Cores">
+                        <input type="text" id="toolHex" placeholder="#000000"
+                            class="text-[10px] w-14 border-none uppercase focus:outline-none" maxlength="7">
+                    </div>
+                    <input type="text" id="toolFont" placeholder="Nome da fonte..."
+                        class="text-xs border rounded px-2 h-8 w-32 bg-white"
+                        title="Digite o nome da fonte (ex: Arial, Garrit, Serif)">
+                    <input type="number" id="toolSize" placeholder="Tamanho (pt)"
+                        class="text-xs border rounded px-2 h-8 w-24 bg-white"
+                        title="Tamanho da fonte em pt (ex: 12, 18, 24)" min="1">
+                    <button type="button" onclick="applyStyle()"
+                        class="px-3 h-8 bg-blue-900 text-white text-[10px] uppercase tracking-wider rounded font-black hover:bg-blue-800 transition-colors">
+                        Aplicar Estilo
+                    </button>
+                </div>
+                <textarea id="p-texto"
+                    class="h-96 font-serif leading-relaxed text-lg w-full border-t-0 rounded-t-none"></textarea>
+            </div>
+
+            <div class="space-y-4 bg-gray-50 p-4 rounded-lg border">
+                <label class="form-label">Livros</label>
+                <select id="p-livros" multiple class="h-24 text-xs"></select>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Filtrar por Livro (opcional)</label>
+                <select id="p-destino-filtro" onchange="filtrarDestinoPoema(this.value)"
+                    class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs mb-2">
+                    <option value="">-- Todos os livros --</option>
+                </select>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Destino (Parte ou Seção)</label>
+                <select id="p-destino" onchange="sugerirSequencia(); autoPreencherDataPublicacao(this.value, 'p')"
+                    class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                </select>
+                <div id="p-coletaneas-info"></div>
+                <label class="form-label">Elos</label>
+                <select id="p-elos-select" multiple class="h-24 text-xs bg-blue-50"></select>
+                <label class="form-label">Referências</label>
+                <select id="p-refs-select" multiple class="h-24 text-xs bg-blue-50"></select>
+                <label class="form-label">Notas</label>
+                <textarea id="p-notas" class="text-sm h-20"></textarea>
+                <label class="form-label">Sinalizações (Etiquetas)</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="p-sinal-input" list="sugestoes-sinais" class="text-sm flex-1"
+                        placeholder="Nova etiqueta...">
+                    <button type="button" onclick="adicionarTag()"
+                        class="bg-blue-100 text-blue-700 px-3 rounded text-xs font-bold">+</button>
+                </div>
+                <div id="p-tags-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white border rounded"></div>
+                <input type="hidden" id="p-sinal">
+                <label class="form-label">Dedicado a / Sobre quem (Pessoas)</label>
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="p-pessoa-input" list="sugestoes-pessoas" class="text-sm flex-1"
+                        placeholder="Nome da pessoa...">
+                    <button type="button" onclick="adicionarPessoa()"
+                        class="bg-rose-100 text-rose-700 px-3 rounded text-xs font-bold">+</button>
+                </div>
+                <div id="p-pessoas-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white border rounded"></div>
+                <input type="hidden" id="p-pessoas">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="p-pub">
+                    <label class="text-sm font-bold">Publicado</label>
+                </div>
+            </div>
+
+            <div class="md:col-span-3 flex justify-end gap-2 border-t pt-4">
+                <button type="button" onclick="toggleModal('modal-poema')"
+                    class="text-gray-600 px-4 py-2">Cancelar</button>
+                <button type="submit" class="bg-blue-700 text-white px-8 py-2 rounded font-bold">GRAVAR</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>

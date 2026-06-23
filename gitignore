@@ -1,0 +1,24 @@
+# Dependências (se usar npm futuramente)
+node_modules/
+
+# Dados locais — nunca comitar backups pessoais
+data/arquivo_poetico_backup.json
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/settings.json
+.idea/
+*.suo
+*.user
+
+# Five Server / Live Server (logs e configs gerados automaticamente)
+.fiveserver.json
+.liveserver*
+
+# Arquivos de build (se adicionar bundler no futuro)
+dist/
+build/
