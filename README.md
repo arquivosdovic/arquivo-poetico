@@ -26,6 +26,9 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 ### Livros
 ![Aba Livros](assets/screenshots/livros.png)
 
+### Coletâneas
+![Aba Coletâneas](assets/screenshots/coletaneas.png)
+
 ### Partes
 ![Aba Partes](assets/screenshots/partes.png)
 
@@ -40,9 +43,6 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 
 ### Elementos
 ![Aba Elementos](assets/screenshots/elementos.png)
-
-### Coletâneas
-![Aba Coletâneas](assets/screenshots/coletaneas.png)
 
 ### Estrutura
 ![Aba Estrutura](assets/screenshots/estrutura.png)
