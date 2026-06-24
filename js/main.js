@@ -26,7 +26,8 @@ import { previsualizarExportacaoFiltrada,
          executarExportacaoFiltrada,
          popularSelecaoExportacao,
          exportarTudoAninhado,
-         exportarLivroCompleto }                              from './exportar.js';
+         exportarLivroCompleto,
+         exportarLivrosCompletos }                            from './exportar.js';
 import { renderEstatisticas }                               from './estatisticas.js';
 import { initEditor, adicionarTag, removerTag,
          applyStyle, wrapText, renderizarTags, setAlign,
@@ -148,6 +149,7 @@ window.executarExportacaoFiltrada      = executarExportacaoFiltrada;
 window.renderEstatisticas              = renderEstatisticas;
 window.exportarTudoAninhado            = exportarTudoAninhado;
 window.exportarLivroCompleto           = exportarLivroCompleto;
+window.exportarLivrosCompletos         = exportarLivrosCompletos;
 
 window.toggleSelecaoEstrutura  = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura    = marcarTodosEstrutura;

@@ -298,6 +298,42 @@ export function executarExportacaoFiltrada() {
     }
 }
 
+// ─── Exportar Vários Livros Completos (dados do livro + conteúdo aninhado) ──
+// Mesma ideia de exportarLivroCompleto, mas pra todos os Livros marcados nos
+// checkboxes de #exp-livros-checks (os mesmos usados pelo filtro acima) —
+// cada um sai com seus próprios campos (título, sinopse, capa-id) + árvore
+// completa de Partes/Seções/Poemas/Prosas, sem passar pelos filtros de
+// pessoa/tema/data (esses são só pra "Exportar JSON filtrado").
+export function exportarLivrosCompletos() {
+    const ids = idsMarcados('exp-livro-check');
+    if (ids.length === 0) {
+        alert('Marque pelo menos um Livro na lista acima antes de baixar.');
+        return;
+    }
+
+    import('./nesting.js').then(({ buildNestingLivro }) => {
+        const livros = ids
+            .map(id => buildNestingLivro(db, id))
+            .filter(Boolean);
+
+        if (livros.length === 0) { alert('Nenhum dos livros marcados foi encontrado.'); return; }
+
+        const saida = { livros };
+        const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `livros_completos_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+
+        const span = document.getElementById('exp-resultado');
+        if (span) span.innerText = `${livros.length} livro(s) completo(s) exportado(s).`;
+    });
+}
+
 // ─── Exportar Um Livro Completo (dados do livro + conteúdo aninhado) ────────
 // Igual a exportarTudoAninhado, mas filtrado a um único Livro — pra quando
 // você quer o título/sinopse/capa-id do livro junto com Partes→Seções→Poemas,
