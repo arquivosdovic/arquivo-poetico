@@ -25,7 +25,8 @@ import { renderLists, setFiltroPoemas, setFiltroProsas,
 import { previsualizarExportacaoFiltrada,
          executarExportacaoFiltrada,
          popularSelecaoExportacao,
-         exportarTudoAninhado }                              from './exportar.js';
+         exportarTudoAninhado,
+         exportarLivroCompleto }                              from './exportar.js';
 import { renderEstatisticas }                               from './estatisticas.js';
 import { initEditor, adicionarTag, removerTag,
          applyStyle, wrapText, renderizarTags, setAlign,
@@ -146,6 +147,7 @@ window.previsualizarExportacaoFiltrada = previsualizarExportacaoFiltrada;
 window.executarExportacaoFiltrada      = executarExportacaoFiltrada;
 window.renderEstatisticas              = renderEstatisticas;
 window.exportarTudoAninhado            = exportarTudoAninhado;
+window.exportarLivroCompleto           = exportarLivroCompleto;
 
 window.toggleSelecaoEstrutura  = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura    = marcarTodosEstrutura;

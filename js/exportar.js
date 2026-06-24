@@ -298,6 +298,39 @@ export function executarExportacaoFiltrada() {
     }
 }
 
+// ─── Exportar Um Livro Completo (dados do livro + conteúdo aninhado) ────────
+// Igual a exportarTudoAninhado, mas filtrado a um único Livro — pra quando
+// você quer o título/sinopse/capa-id do livro junto com Partes→Seções→Poemas,
+// sem baixar o acervo inteiro nem perder os dados do livro (que a exportação
+// por seleção da Estrutura não inclui — ela só pega Partes/Seções/Poemas pra baixo).
+export function exportarLivroCompleto(livroId) {
+    if (!livroId) {
+        alert('Escolha um livro no seletor acima antes de baixar.');
+        return;
+    }
+    import('./nesting.js').then(({ buildNestingLivro }) => {
+        const livro = buildNestingLivro(db, livroId);
+        if (!livro) {
+            alert('Livro não encontrado.');
+            return;
+        }
+
+        const nomeArquivo = (livro.titulo || `livro_${livroId}`)
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_').toLowerCase();
+
+        const blob = new Blob([JSON.stringify(livro, null, 4)], { type: 'application/json;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${nomeArquivo || 'livro'}_${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    });
+}
+
 // Mantém os checkboxes de Livros/Coletâneas atualizados conforme o banco muda
 window.addEventListener('db:saved', popularSelecaoExportacao);
 

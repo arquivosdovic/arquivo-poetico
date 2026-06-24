@@ -45,6 +45,14 @@ export function buildNesting(db) {
     };
 }
 
+// Mesma árvore de buildNesting, mas devolve só um Livro (com seus próprios
+// campos — título, sinopse, capa-id etc. — já junto do conteúdo aninhado).
+// Usado pra exportar "este livro completo" sem precisar baixar o acervo todo.
+export function buildNestingLivro(db, livroId) {
+    const completo = buildNesting(db);
+    return completo.data.find(l => String(l.id) === String(livroId)) || null;
+}
+
 export function getSecoes(paiId, paiTipo, db) {
     return db.secoes
         .filter(s => s.paiId == paiId && s.paiTipo === paiTipo)
