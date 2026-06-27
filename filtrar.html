@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquivo Poético — Versões Alternativas</title>
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="assets/icons/favicon-180.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --color-accent: #1d4ed8;
+            --color-accent-light: #eff6ff;
+            --color-warn: #d97706;
+            --color-warn-light: #fffbeb;
+            --color-danger: #dc2626;
+            --color-danger-light: #fef2f2;
+            --color-ok: #16a34a;
+            --color-ok-light: #f0fdf4;
+        }
+
+        .tab-btn { border-bottom: 2px solid transparent; color: #6b7280; transition: color .15s, border-color .15s; padding-bottom: 8px; }
+        .tab-btn:hover { color: #1d4ed8; }
+        .tab-btn.active { color: #1d4ed8; border-bottom-color: #1d4ed8; font-weight: 600; }
+
+        .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; }
+        .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 9999px; }
+        .badge-warn  { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-ok    { background: #dcfce7; color: #166534; }
+        .badge-neutral { background: #f3f4f6; color: #374151; }
+
+        textarea { font-family: 'Georgia', serif; font-size: 13px; line-height: 1.7; }
+
+        .diff-old { background: #fee2e2; text-decoration: line-through; border-radius: 2px; padding: 0 2px; }
+        .diff-new  { background: #dcfce7; border-radius: 2px; padding: 0 2px; }
+
+        .section-hidden { display: none; }
+
+        /* Transição suave para o painel de edição */
+        .editor-panel { animation: slideIn .15s ease; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Scrollbar discreta */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans pb-24 min-h-screen">
+
+<!-- ── HEADER ─────────────────────────────────────────────────── -->
+<header class="bg-white border-b shadow-sm p-5 mb-8 sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
+        <div>
+            <h1 class="text-xl font-light tracking-tight">
+                Arquivo <span class="font-bold text-blue-700">Poético</span>
+                <span class="text-gray-400 font-light ml-2">— Versões Alternativas</span>
+            </h1>
+            <p class="text-xs text-gray-400 mt-0.5">
+                Cadastre versões alternativas de textos sensíveis para exportar com segurança para uma IA
+            </p>
+        </div>
+        <a href="index.html"
+           class="text-sm text-blue-600 border border-blue-200 px-3 py-1.5 rounded-md hover:bg-blue-50 transition">
+            ← Voltar ao Arquivo
+        </a>
+    </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4">
+
+    <!-- ── ETAPA 1: UPLOAD DO JSON ──────────────────────────────── -->
+    <section id="sec-upload" class="card p-8 mb-6">
+        <div class="flex items-start gap-4">
+            <div class="text-3xl">📂</div>
+            <div class="flex-1">
+                <h2 class="font-semibold text-lg mb-1">1. Carregue o backup do acervo</h2>
+                <p class="text-sm text-gray-500 mb-4">
+                    Suba o <code class="bg-gray-100 px-1 rounded text-xs">arquivo_poetico_backup.json</code> exportado
+                    pelo Arquivo Poético. Nenhum dado é enviado para servidor — tudo roda no navegador.
+                </p>
+                <div id="drop-zone"
+                     class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer
+                            hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                     onclick="document.getElementById('input-json').click()"
+                     ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
+                     ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
+                     ondrop="handleDrop(event)">
+                    <div class="text-4xl mb-2">🗂️</div>
+                    <p class="text-gray-500 text-sm">Arraste o arquivo aqui ou <span class="text-blue-600 font-medium">clique para escolher</span></p>
+                    <input type="file" id="input-json" accept=".json" class="hidden" onchange="carregarJSON(event)">
+                </div>
+                <div id="upload-status" class="hidden mt-3 text-sm font-medium"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── BANCO DE VERSÕES ───────────────────────────────────── -->
+    <section class="card p-6 mb-6">
+        <h2 class="font-semibold mb-1 flex items-center gap-2">
+            💾 Banco de versões filtradas
+            <span class="text-xs font-normal text-gray-400">(persiste entre sessões e uploads)</span>
+        </h2>
+        <p class="text-xs text-gray-500 mb-4">
+            As versões que você cadastra ficam salvas por título no navegador. Ao subir um novo JSON,
+            elas são reaplicadas automaticamente. Use os botões abaixo para fazer backup ou migrar para outro dispositivo.
+        </p>
+        <div class="flex flex-wrap items-center gap-3">
+            <span id="contador-banco" class="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1.5 rounded-full">banco vazio</span>
+            <button onclick="exportarBanco()"
+                    class="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">
+                ⬇ Exportar banco
+            </button>
+            <label class="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition cursor-pointer">
+                ⬆ Importar banco
+                <input type="file" accept=".json" class="hidden" onchange="importarBanco(event)">
+            </label>
+            <button onclick="limparBanco()"
+                    class="text-sm text-red-400 hover:text-red-600 transition text-xs ml-auto">
+                Limpar banco
+            </button>
+        </div>
+    </section>
+
+    <!-- Banner de reconhecimento automático (aparece após upload) -->
+    <div id="banner-reconhecimento"
+         class="hidden mb-6 bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-5 py-3 font-medium">
+    </div>
+
+    <!-- ── TAGS CONFIGURÁVEIS ──────────────────────────────────── -->
+    <section id="sec-tags" class="card p-6 mb-6 hidden">
+        <h2 class="font-semibold mb-3 flex items-center gap-2">
+            🏷️ Tags que identificam textos sensíveis
+            <span class="text-xs font-normal text-gray-400">(edite conforme necessário)</span>
+        </h2>
+        <div class="flex flex-wrap gap-2 mb-3" id="lista-tags-filtro"></div>
+        <div class="flex gap-2">
+            <input id="input-nova-tag" type="text" placeholder="Adicionar tag..."
+                   class="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarTagFiltro()}">
+            <button onclick="adicionarTagFiltro()"
+                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1.5 rounded-md transition">
+                + Adicionar
+            </button>
+        </div>
+    </section>
+
+    <!-- ── ETAPA 2: LISTA DE TEXTOS SENSÍVEIS ──────────────────── -->
+    <section id="sec-textos" class="hidden">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-lg">2. Textos marcados como sensíveis</h2>
+            <span id="contador-textos" class="badge badge-neutral"></span>
+        </div>
+
+        <div id="lista-textos" class="space-y-3 mb-8"></div>
+    </section>
+
+    <!-- ── ETAPA 3: EXPORTAR ───────────────────────────────────── -->
+    <section id="sec-exportar" class="hidden">
+        <div class="card p-6">
+            <h2 class="font-semibold text-lg mb-1">3. Exportar JSON com substituições</h2>
+            <p class="text-sm text-gray-500 mb-4">
+                O arquivo exportado é uma cópia do backup original com os textos substituídos pelas versões filtradas
+                cadastradas acima. Textos sem versão filtrada são mantidos como estão.
+            </p>
+
+            <div id="resumo-exportacao" class="bg-gray-50 rounded-lg px-4 py-3 mb-4 text-sm text-gray-600"></div>
+
+            <div class="flex flex-wrap gap-3">
+                <button onclick="exportarFiltrado()"
+                        class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition font-medium text-sm shadow">
+                    ⬇ Baixar JSON filtrado
+                </button>
+                <button onclick="exportarFiltrado(true)"
+                        class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-lg hover:bg-gray-50 transition text-sm">
+                    ⬇ Baixar só os textos filtrados
+                </button>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- ── MODAL DE EDIÇÃO ──────────────────────────────────────────── -->
+<div id="modal-edicao" class="fixed inset-0 z-50 hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="fecharModal()"></div>
+
+    <!-- Painel -->
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div id="modal-painel"
+             class="editor-panel pointer-events-auto bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh]
+                    overflow-y-auto flex flex-col">
+
+            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
+                <div>
+                    <div id="modal-tipo-badge" class="badge badge-neutral mb-1.5"></div>
+                    <h3 id="modal-titulo" class="font-bold text-lg leading-tight"></h3>
+                    <div id="modal-tags-orig" class="flex flex-wrap gap-1 mt-1.5"></div>
+                </div>
+                <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
+            </div>
+
+            <div class="p-6 space-y-5 flex-1">
+
+                <!-- Texto original (colapsável) -->
+                <div>
+                    <button onclick="toggleOriginal()"
+                            class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1 hover:text-gray-700 mb-2"
+                            id="btn-toggle-original">
+                        <span id="seta-original">▶</span> Texto original
+                    </button>
+                    <div id="bloco-original" class="hidden">
+                        <div id="modal-texto-original"
+                             class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm whitespace-pre-wrap
+                                    text-gray-700 leading-relaxed max-h-56 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- Versão filtrada -->
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                        Versão filtrada
+                        <span class="font-normal normal-case text-gray-400 ml-1">— substitui o original na exportação</span>
+                    </label>
+                    <textarea id="modal-texto-filtrado"
+                              class="w-full border border-gray-300 rounded-xl p-4 resize-none focus:outline-none
+                                     focus:ring-2 focus:ring-blue-300"
+                              rows="12"
+                              placeholder="Cole ou escreva aqui a versão filtrada do texto..."></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="copiarOriginalParaFiltrado()"
+                                class="text-xs text-gray-500 hover:text-blue-600 transition border border-gray-200
+                                       rounded px-2 py-1 hover:border-blue-300">
+                            Copiar original como base
+                        </button>
+                        <button onclick="limparFiltrado()"
+                                class="text-xs text-gray-500 hover:text-red-600 transition border border-gray-200
+                                       rounded px-2 py-1 hover:border-red-200">
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Título da versão filtrada -->
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                        Título na versão filtrada
+                        <span class="font-normal normal-case text-gray-400 ml-1">— deixe em branco para usar o original</span>
+                    </label>
+                    <input id="modal-titulo-filtrado" type="text"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                                  focus:ring-2 focus:ring-blue-300"
+                           placeholder="ex: Título original (versão filtrada)">
+                </div>
+
+                <!-- Nota do texto original -->
+                <div id="bloco-nota-original" class="hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Nota do texto original
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input type="checkbox" id="modal-nota-original-exportar"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-300"
+                                   onchange="toggleNotaOriginalExportar()">
+                            <span id="label-nota-original-exportar"
+                                  class="text-xs text-gray-400">incluir na exportação</span>
+                        </label>
+                    </div>
+                    <div id="modal-nota-original"
+                         class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm whitespace-pre-wrap
+                                text-amber-900 leading-relaxed max-h-32 overflow-y-auto opacity-40"></div>
+                </div>
+
+                <!-- Nota da versão filtrada (pode ou não ser exportada) -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            Nota da versão
+                        </label>
+                        <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                            <input type="checkbox" id="modal-nota-exportar"
+                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-300"
+                                   onchange="toggleNotaExportar()">
+                            <span id="label-nota-exportar"
+                                  class="text-xs text-gray-400">incluir na exportação</span>
+                        </label>
+                    </div>
+                    <textarea id="modal-nota" rows="2"
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                                     focus:outline-none focus:ring-2 focus:ring-blue-300 opacity-60"
+                              placeholder="Nota sobre esta versão — marque acima se quiser incluí-la no JSON exportado..."></textarea>
+                </div>
+
+                <!-- Substituições (nunca exportado) -->
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                        Substituições
+                        <span class="font-normal normal-case text-gray-400 ml-1">— registro do que foi trocado, nunca exportado</span>
+                    </label>
+                    <textarea id="modal-substituicoes" rows="3"
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                                     focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+                              placeholder="ex: &quot;noite&quot; → &quot;tarde&quot;, removida estrofe 3..."></textarea>
+                </div>
+
+            </div>
+
+            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white">
+                <button onclick="removerVersaoFiltrada()"
+                        id="btn-remover"
+                        class="text-sm text-red-500 hover:text-red-700 transition hidden">
+                    Remover versão filtrada
+                </button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="fecharModal()"
+                            class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button onclick="salvarVersaoFiltrada()"
+                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow">
+                        Salvar versão filtrada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── SCRIPT ───────────────────────────────────────────────────── -->
+<script>
+
+// ─── Estado ──────────────────────────────────────────────────────
+
+let db = null;                      // JSON achatado (poemas/prosas em listas planas) — usado pra análise interna
+let arquivoOriginal = null;         // JSON exatamente como veio do upload, sem achatamento — usado na exportação final
+let textosSensiveis = [];           // [{tipo, item}]
+let versoesFiltradas = {};          // { "tipo:id" → { titulo, texto, nota } }  ← chave de sessão
+let modalItemKey = null;            // chave do item aberto no modal
+
+let tagsFiltro = [
+    'Vocabulário hiperacionante',
+    'Conteúdo sensível'
+];
+
+// ─── Persistência em localStorage ────────────────────────────────
+// O banco de versões é indexado por "tipo:titulo" (não por id),
+// para sobreviver à troca de JSON sem perder as substituições.
+
+const LS_KEY_VERSOES = 'arquivoPoetico_versoesFiltradas_v1';
+const LS_KEY_TAGS    = 'arquivoPoetico_tagsFiltro_v1';
+
+// { "tipo:titulo" → { tipo, titulo, textoFiltrado, tituloFiltrado, nota } }
+let bancoVersoes = {};
+
+function salvarBanco() {
+    try {
+        localStorage.setItem(LS_KEY_VERSOES, JSON.stringify(bancoVersoes));
+        localStorage.setItem(LS_KEY_TAGS, JSON.stringify(tagsFiltro));
+    } catch (e) {
+        console.warn('localStorage cheio ao salvar versões filtradas:', e);
+    }
+}
+
+function carregarBanco() {
+    try {
+        const raw = localStorage.getItem(LS_KEY_VERSOES);
+        bancoVersoes = raw ? JSON.parse(raw) : {};
+        const rawTags = localStorage.getItem(LS_KEY_TAGS);
+        if (rawTags) tagsFiltro = JSON.parse(rawTags);
+    } catch (e) {
+        bancoVersoes = {};
+    }
+}
+
+// Chave de sessão (por id do item atual) → chave do banco (por título)
+function chaveBanco(tipo, titulo) {
+    return `${tipo}:${titulo}`;
+}
+
+// Ao abrir um JSON, resolve quais itens já têm versão no banco
+// e preenche versoesFiltradas (chave de sessão) automaticamente.
+function reconciliarComBanco() {
+    versoesFiltradas = {};
+    let reconhecidos = 0;
+
+    textosSensiveis.forEach(({ tipo, item }) => {
+        const kb = chaveBanco(tipo, item.titulo || '');
+        const entrada = bancoVersoes[kb];
+        if (entrada) {
+            versoesFiltradas[chave(tipo, item.id)] = {
+                titulo:               entrada.tituloFiltrado,
+                texto:                entrada.textoFiltrado,
+                nota:                 entrada.nota,
+                notaExportar:         entrada.notaExportar || false,
+                notaOriginalExportar: entrada.notaOriginalExportar || false,
+                substituicoes:        entrada.substituicoes || ''
+            };
+            reconhecidos++;
+        }
+    });
+
+    return reconhecidos;
+}
+
+// Quando uma versão é salva na sessão, persiste também no banco por título
+function persistirVersao(tipo, item, dadosVersao) {
+    const kb = chaveBanco(tipo, item.titulo || '');
+    bancoVersoes[kb] = {
+        tipo,
+        tituloOriginal:       item.titulo || '',
+        tituloFiltrado:       dadosVersao.titulo,
+        textoFiltrado:        dadosVersao.texto,
+        nota:                 dadosVersao.nota,
+        notaExportar:         dadosVersao.notaExportar || false,
+        notaOriginalExportar: dadosVersao.notaOriginalExportar || false,
+        substituicoes:        dadosVersao.substituicoes || '',
+        atualizadoEm:         new Date().toISOString()
+    };
+    salvarBanco();
+}
+
+function removerDoBanco(tipo, tituloOriginal) {
+    const kb = chaveBanco(tipo, tituloOriginal || '');
+    delete bancoVersoes[kb];
+    salvarBanco();
+}
+
+// Exporta o banco de versões como JSON separado (para backup/transferência)
+function exportarBanco() {
+    const total = Object.keys(bancoVersoes).length;
+    if (total === 0) {
+        alert('Nenhuma versão filtrada cadastrada ainda.');
+        return;
+    }
+    const payload = {
+        export_format: 'banco_versoes_filtradas',
+        gerado_em: new Date().toISOString(),
+        total,
+        versoes: bancoVersoes
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'versoes_filtradas_banco.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+// Importa um banco exportado anteriormente (merge: não apaga o que já existe)
+function importarBanco(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            const versoes = parsed.versoes || parsed; // aceita o objeto direto também
+            let importados = 0;
+            Object.entries(versoes).forEach(([k, v]) => {
+                if (v.textoFiltrado || v.texto) {
+                    bancoVersoes[k] = {
+                        tipo:                 v.tipo || '',
+                        tituloOriginal:       v.tituloOriginal || '',
+                        tituloFiltrado:       v.tituloFiltrado || v.titulo || '',
+                        textoFiltrado:        v.textoFiltrado  || v.texto  || '',
+                        nota:                 v.nota || '',
+                        notaExportar:         v.notaExportar || false,
+                        notaOriginalExportar: v.notaOriginalExportar || false,
+                        substituicoes:        v.substituicoes || '',
+                        atualizadoEm:         v.atualizadoEm || new Date().toISOString()
+                    };
+                    importados++;
+                }
+            });
+            salvarBanco();
+            atualizarContadorBanco();
+            if (db) {
+                const r = reconciliarComBanco();
+                renderLista();
+                atualizarResumo();
+                mostrarBannerReconhecimento(r, importados);
+            } else {
+                alert(`✓ ${importados} versão(ões) importada(s) para o banco.\nCarregue um JSON do acervo para aplicá-las.`);
+            }
+        } catch {
+            alert('Não foi possível ler o arquivo de banco.');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // permite reimportar o mesmo arquivo
+}
+
+function atualizarContadorBanco() {
+    const total = Object.keys(bancoVersoes).length;
+    const el = document.getElementById('contador-banco');
+    if (el) el.textContent = total > 0 ? `${total} versão(ões) salva(s)` : 'banco vazio';
+}
+
+function mostrarBannerReconhecimento(reconhecidos, total) {
+    const el = document.getElementById('banner-reconhecimento');
+    if (!el) return;
+    if (reconhecidos === 0) { el.classList.add('hidden'); return; }
+    el.textContent = `✓ ${reconhecidos} de ${textosSensiveis.length} texto(s) reconhecido(s) automaticamente pelo banco (${total} versões no banco).`;
+    el.classList.remove('hidden');
+}
+
+// ─── Utilitários ─────────────────────────────────────────────────
+
+function chave(tipo, id) { return `${tipo}:${id}`; }
+
+function sinalizacoesDe(item) {
+    if (!item.sinalizacoes) return [];
+    return item.sinalizacoes.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function temTagSensivel(item) {
+    const sinais = sinalizacoesDe(item);
+    return tagsFiltro.some(tag =>
+        sinais.some(s => s.toLowerCase() === tag.toLowerCase())
+    );
+}
+
+function tagsSensiveisDe(item) {
+    const sinais = sinalizacoesDe(item);
+    return tagsFiltro.filter(tag =>
+        sinais.some(s => s.toLowerCase() === tag.toLowerCase())
+    );
+}
+
+function stripHTML(html) {
+    if (!html) return '';
+    return html.replace(/<[^>]+>/g, '');
+}
+
+function contarPalavras(texto) {
+    return (stripHTML(texto).match(/\S+/g) || []).length;
+}
+
+// ─── Drag & drop ─────────────────────────────────────────────────
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('border-blue-400','bg-blue-50');
+    const file = e.dataTransfer.files[0];
+    if (file) lerArquivo(file);
+}
+
+// ─── Carregamento do JSON ─────────────────────────────────────────
+
+function carregarJSON(event) {
+    lerArquivo(event.target.files[0]);
+}
+
+// ─── Desaninhamento (formatos vindos de buildNesting/buildNestingLivro) ─────
+// exportarTudoAninhado / exportarLivroCompleto / exportarLivrosCompletos geram
+// uma árvore Livro → Parte → Seção → Poema/Prosa (ver nesting.js no app
+// principal), sem db.livros/partes/secoes separados. Aqui achatamos essa
+// árvore numa lista plana de poemas/prosas com contexto já resolvido, igual
+// ao que já fazemos para a Exportação filtrada.
+
+function flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut) {
+    const nomeSecao = secao.titulo || null;
+    const contexto = { livro: nomeLivro, parte: nomeParte, secao: nomeSecao };
+    (secao.conteudo_poemas || []).forEach(p => poemasOut.push({ ...p, contexto }));
+    (secao.conteudo_prosas || []).forEach(p => prosasOut.push({ ...p, contexto }));
+}
+
+function flattenLivroAninhado(livro, poemasOut, prosasOut) {
+    const nomeLivro = livro.siglaOficial || livro.siglaPessoal || livro.titulo || null;
+
+    let contexto = { livro: nomeLivro, parte: null, secao: null };
+    (livro.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto }));
+    (livro.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto }));
+
+    (livro.conteudo_secoes_diretas || []).forEach(secao =>
+        flattenSecaoAninhada(secao, nomeLivro, null, poemasOut, prosasOut));
+
+    (livro.conteudo_partes || []).forEach(parte => {
+        const nomeParte = parte.titulo || null;
+        const contextoParte = { livro: nomeLivro, parte: nomeParte, secao: null };
+        (parte.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto: contextoParte }));
+        (parte.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto: contextoParte }));
+        (parte.conteudo_secoes || []).forEach(secao =>
+            flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut));
+    });
+}
+
+// Detecta se um objeto "parece" um Livro aninhado (tem ao menos uma das
+// chaves de conteúdo que só existem nessa árvore, geradas por buildNesting).
+function pareceLivroAninhado(obj) {
+    return !!obj && (
+        'conteudo_partes' in obj ||
+        'conteudo_poemas_diretos' in obj ||
+        'conteudo_secoes_diretas' in obj
+    );
+}
+
+function lerArquivo(file) {
+
+
+    if (!file || !file.name.endsWith('.json')) {
+        mostrarStatus('Arquivo inválido. Envie um .json exportado pelo Arquivo Poético.', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            arquivoOriginal = parsed; // preserva a árvore exatamente como veio, pra exportação respeitar a estrutura
+
+            if (Array.isArray(parsed.itens)) {
+                // Formato da "Exportação filtrada" (aba Exportar → por pessoa/tema/ano/status):
+                // { itens: [{tipo:'poema'|'prosa', ..., contexto:{livro,parte,secao}}], coletaneas: [...] }
+                // Não tem db.livros/partes/secoes — cada item já vem com o contexto resolvido,
+                // então nomeLivro() abaixo usa item.contexto em vez de paiTipo/paiId.
+                db = {
+                    poemas: parsed.itens.filter(i => i.tipo === 'poema'),
+                    prosas: parsed.itens.filter(i => i.tipo === 'prosa'),
+                    livros: [], partes: [], secoes: [], elementos: [],
+                    itensColetanea: [], coletaneas: []
+                };
+                if (!db.poemas.length && !db.prosas.length) throw new Error('Estrutura inesperada');
+
+                const avisoColetaneas = (parsed.coletaneas || []).length
+                    ? ` (${parsed.coletaneas.length} coletânea(s) do arquivo não entram aqui — itens de coletânea não têm sinalizações próprias para filtrar)`
+                    : '';
+                mostrarStatus(`✓ Carregado (exportação filtrada): ${db.poemas.length} poemas, ${db.prosas.length} prosas${avisoColetaneas}`, 'ok');
+
+            } else if (parsed.export_format === 'deep_nesting' || Array.isArray(parsed.data)) {
+                // Formato de exportarTudoAninhado():
+                // { export_format:'deep_nesting', data:[livros...], avulsos:{poemas,prosas}, coletaneas:[...] }
+                const poemasOut = [], prosasOut = [];
+                (parsed.data || []).forEach(l => flattenLivroAninhado(l, poemasOut, prosasOut));
+                const semContexto = { livro: null, parte: null, secao: null };
+                (parsed.avulsos?.poemas || []).forEach(p => poemasOut.push({ ...p, contexto: semContexto }));
+                (parsed.avulsos?.prosas || []).forEach(p => prosasOut.push({ ...p, contexto: semContexto }));
+
+                db = {
+                    poemas: poemasOut, prosas: prosasOut,
+                    livros: [], partes: [], secoes: [], elementos: [],
+                    itensColetanea: [], coletaneas: []
+                };
+                if (!db.poemas.length && !db.prosas.length) throw new Error('Estrutura inesperada');
+                mostrarStatus(`✓ Carregado (exportação aninhada): ${db.poemas.length} poemas, ${db.prosas.length} prosas`, 'ok');
+
+            } else if (Array.isArray(parsed.livros) && parsed.livros.some(pareceLivroAninhado)) {
+                // Formato de exportarLivrosCompletos(): { livros: [ <livro aninhado>, ... ] }
+                const poemasOut = [], prosasOut = [];
+                parsed.livros.forEach(l => flattenLivroAninhado(l, poemasOut, prosasOut));
+
+                db = {
+                    poemas: poemasOut, prosas: prosasOut,
+                    livros: [], partes: [], secoes: [], elementos: [],
+                    itensColetanea: [], coletaneas: []
+                };
+                if (!db.poemas.length && !db.prosas.length) throw new Error('Estrutura inesperada');
+                mostrarStatus(`✓ Carregado (${parsed.livros.length} livro(s) completo(s)): ${db.poemas.length} poemas, ${db.prosas.length} prosas`, 'ok');
+
+            } else if (pareceLivroAninhado(parsed)) {
+                // Formato de exportarLivroCompleto(): o próprio livro aninhado, sem wrapper
+                const poemasOut = [], prosasOut = [];
+                flattenLivroAninhado(parsed, poemasOut, prosasOut);
+
+                db = {
+                    poemas: poemasOut, prosas: prosasOut,
+                    livros: [], partes: [], secoes: [], elementos: [],
+                    itensColetanea: [], coletaneas: []
+                };
+                if (!db.poemas.length && !db.prosas.length) throw new Error('Estrutura inesperada');
+                mostrarStatus(`✓ Carregado (livro completo "${parsed.titulo || '—'}"): ${db.poemas.length} poemas, ${db.prosas.length} prosas`, 'ok');
+
+            } else {
+                db = parsed;
+                if (!db.poemas && !db.prosas) throw new Error('Estrutura inesperada');
+                mostrarStatus(`✓ Carregado: ${(db.poemas||[]).length} poemas, ${(db.prosas||[]).length} prosas`, 'ok');
+            }
+
+            document.getElementById('drop-zone').querySelector('p').textContent = `✓ ${file.name}`;
+            analisarTextos();
+        } catch {
+            mostrarStatus('Não foi possível ler o arquivo. Verifique se é um backup válido do Arquivo Poético.', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function mostrarStatus(msg, tipo) {
+    const el = document.getElementById('upload-status');
+    el.className = `mt-3 text-sm font-medium ${tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+// ─── Tags de filtro ───────────────────────────────────────────────
+
+function renderTagsFiltro() {
+    const lista = document.getElementById('lista-tags-filtro');
+    lista.innerHTML = tagsFiltro.map(tag => `
+        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1 rounded-full">
+            ${tag}
+            <button onclick="removerTagFiltro('${tag.replace(/'/g,"\\'")}')"
+                    class="hover:text-red-600 font-bold ml-0.5 text-amber-600">×</button>
+        </span>`).join('');
+}
+
+function adicionarTagFiltro() {
+    const input = document.getElementById('input-nova-tag');
+    const tag = input.value.trim();
+    if (tag && !tagsFiltro.includes(tag)) {
+        tagsFiltro.push(tag);
+        renderTagsFiltro();
+        salvarBanco();
+        if (db) analisarTextos();
+    }
+    input.value = '';
+}
+
+function removerTagFiltro(tag) {
+    tagsFiltro = tagsFiltro.filter(t => t !== tag);
+    renderTagsFiltro();
+    salvarBanco();
+    if (db) analisarTextos();
+}
+
+// ─── Análise ─────────────────────────────────────────────────────
+
+function analisarTextos() {
+    textosSensiveis = [];
+
+    (db.poemas || []).forEach(item => {
+        if (temTagSensivel(item)) textosSensiveis.push({ tipo: 'poema', item });
+    });
+    (db.prosas || []).forEach(item => {
+        if (temTagSensivel(item)) textosSensiveis.push({ tipo: 'prosa', item });
+    });
+
+    // Reconcilia com o banco persistido (por título)
+    const reconhecidos = reconciliarComBanco();
+
+    // Mostra seções
+    document.getElementById('sec-tags').classList.remove('hidden');
+    document.getElementById('sec-textos').classList.remove('hidden');
+    document.getElementById('sec-exportar').classList.remove('hidden');
+    renderTagsFiltro();
+    renderLista();
+    atualizarResumo();
+    mostrarBannerReconhecimento(reconhecidos, Object.keys(bancoVersoes).length);
+}
+
+// ─── Renderização da lista ────────────────────────────────────────
+
+function nomeLivro(item) {
+    // Exportação filtrada: o contexto já vem resolvido (sem precisar de db.livros/partes/secoes)
+    if (item.contexto) {
+        return item.contexto.livro || item.contexto.parte || item.contexto.secao || null;
+    }
+    if (!db || !item.paiTipo) return null;
+    if (item.paiTipo === 'livro') {
+        const l = (db.livros||[]).find(x => x.id == item.paiId);
+        return l ? (l.siglaOficial || l.siglaPessoal || l.titulo) : null;
+    }
+    if (item.paiTipo === 'parte') {
+        const p = (db.partes||[]).find(x => x.id == item.paiId);
+        if (!p) return null;
+        const l = (db.livros||[]).find(x => x.id == p.livroId);
+        return l ? (l.siglaOficial || l.siglaPessoal || l.titulo) : null;
+    }
+    if (item.paiTipo === 'secao') {
+        const s = (db.secoes||[]).find(x => x.id == item.paiId);
+        if (!s) return null;
+        if (s.paiTipo === 'parte') {
+            const p = (db.partes||[]).find(x => x.id == s.paiId);
+            if (!p) return null;
+            const l = (db.livros||[]).find(x => x.id == p.livroId);
+            return l ? (l.siglaOficial || l.siglaPessoal || l.titulo) : null;
+        }
+        const l = (db.livros||[]).find(x => x.id == s.paiId);
+        return l ? (l.siglaOficial || l.siglaPessoal || l.titulo) : null;
+    }
+    return null;
+}
+
+function renderLista() {
+    const lista = document.getElementById('lista-textos');
+    const contador = document.getElementById('contador-textos');
+
+    contador.textContent = `${textosSensiveis.length} texto${textosSensiveis.length !== 1 ? 's' : ''}`;
+
+    if (textosSensiveis.length === 0) {
+        lista.innerHTML = `
+            <div class="card p-8 text-center text-gray-400">
+                <div class="text-4xl mb-2">🔍</div>
+                <p>Nenhum texto encontrado com as tags configuradas acima.</p>
+                <p class="text-xs mt-1">Verifique se as tags correspondem exatamente às usadas no Arquivo Poético.</p>
+            </div>`;
+        return;
+    }
+
+    lista.innerHTML = textosSensiveis.map(({ tipo, item }) => {
+        const k = chave(tipo, item.id);
+        const vf = versoesFiltradas[k];
+        const tags = tagsSensiveisDe(item);
+        const livro = nomeLivro(item);
+        const palavras = contarPalavras(item.texto);
+
+        return `
+        <div class="card p-5 flex gap-4 hover:border-blue-200 transition-colors" id="card-${k.replace(':','-')}">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2 mb-1">
+                    <span class="badge ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 text-purple-700'}"
+                          style="font-size:9px">
+                        ${tipo.toUpperCase()}
+                    </span>
+                    ${tags.map(t => `<span class="badge badge-warn">${t}</span>`).join('')}
+                    ${vf ? `<span class="badge badge-ok">✓ versão filtrada</span>` : ''}
+                </div>
+                <h3 class="font-semibold text-gray-800 leading-tight">${item.titulo || '(sem título)'}</h3>
+                <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-400">
+                    ${livro ? `<span>📚 ${livro}</span>` : ''}
+                    ${item.ano ? `<span>📅 ${item.ano}</span>` : ''}
+                    <span>${palavras} palavras</span>
+                </div>
+                ${vf ? `
+                <div class="mt-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+                    ✓ <strong>${vf.titulo || item.titulo + ' (versão filtrada)'}</strong>
+                    — ${contarPalavras(vf.texto)} palavras
+                    ${vf.nota ? `· <em class="text-gray-500">${vf.nota}</em>` : ''}
+                </div>` : ''}
+            </div>
+            <div class="flex flex-col gap-2 shrink-0">
+                <button onclick="abrirModal('${tipo}', ${item.id})"
+                        class="text-sm px-4 py-2 rounded-lg border transition
+                               ${vf
+                                   ? 'border-green-300 text-green-700 hover:bg-green-50'
+                                   : 'border-blue-300 text-blue-700 hover:bg-blue-50'}">
+                    ${vf ? 'Editar versão' : 'Criar versão filtrada'}
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function atualizarResumo() {
+    const total = textosSensiveis.length;
+    const comVersao = textosSensiveis.filter(({ tipo, item }) => versoesFiltradas[chave(tipo, item.id)]).length;
+    const semVersao = total - comVersao;
+
+    document.getElementById('resumo-exportacao').innerHTML = `
+        <span class="mr-4">📄 <strong>${total}</strong> texto${total !== 1 ? 's' : ''} sensível${total !== 1 ? 'is' : ''} no acervo</span>
+        <span class="mr-4 text-green-700">✓ <strong>${comVersao}</strong> com versão filtrada</span>
+        ${semVersao > 0
+            ? `<span class="text-amber-700">⚠ <strong>${semVersao}</strong> sem versão — serão exportados como estão</span>`
+            : `<span class="text-green-700">Todos os textos têm versão filtrada.</span>`}
+    `;
+}
+
+// ─── Modal ────────────────────────────────────────────────────────
+
+function abrirModal(tipo, id) {
+    const entrada = textosSensiveis.find(x => x.tipo === tipo && x.item.id == id);
+    if (!entrada) return;
+
+    const { item } = entrada;
+    const k = chave(tipo, id);
+    modalItemKey = k;
+
+    const vf = versoesFiltradas[k];
+    const tags = tagsSensiveisDe(item);
+
+    document.getElementById('modal-tipo-badge').textContent = tipo.toUpperCase();
+    document.getElementById('modal-tipo-badge').className = `badge mb-1.5 ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 text-purple-700'}`;
+    document.getElementById('modal-titulo').textContent = item.titulo || '(sem título)';
+    document.getElementById('modal-tags-orig').innerHTML = tags.map(t =>
+        `<span class="badge badge-warn">${t}</span>`).join('');
+
+    // Texto original — strip HTML para exibição limpa
+    document.getElementById('modal-texto-original').textContent = stripHTML(item.texto || '');
+
+    // Nota do texto original (campo salvo como "notas" no app principal)
+    const notaOrigEl = document.getElementById('bloco-nota-original');
+    const notaOrig = (item.notas || item.nota || '').trim();
+    if (notaOrig) {
+        document.getElementById('modal-nota-original').textContent = notaOrig;
+        notaOrigEl.classList.remove('hidden');
+        const exportarOrig = vf?.notaOriginalExportar || false;
+        document.getElementById('modal-nota-original-exportar').checked = exportarOrig;
+        toggleNotaOriginalExportar();
+    } else {
+        notaOrigEl.classList.add('hidden');
+    }
+
+    // Versão filtrada existente
+    document.getElementById('modal-texto-filtrado').value = vf?.texto || '';
+    document.getElementById('modal-titulo-filtrado').value = vf?.titulo || '';
+    document.getElementById('modal-nota').value = vf?.nota || '';
+    document.getElementById('modal-substituicoes').value = vf?.substituicoes || '';
+
+    // Nota exportar
+    const notaExportarChecked = vf?.notaExportar || false;
+    document.getElementById('modal-nota-exportar').checked = notaExportarChecked;
+    toggleNotaExportar();
+
+    document.getElementById('btn-remover').classList.toggle('hidden', !vf);
+
+    // Reseta colapsável
+    document.getElementById('bloco-original').classList.add('hidden');
+    document.getElementById('seta-original').textContent = '▶';
+
+    document.getElementById('modal-edicao').classList.remove('hidden');
+    document.getElementById('modal-texto-filtrado').focus();
+}
+
+function toggleNotaOriginalExportar() {
+    const checked = document.getElementById('modal-nota-original-exportar').checked;
+    const label = document.getElementById('label-nota-original-exportar');
+    const bloco = document.getElementById('modal-nota-original');
+    label.textContent = checked ? 'incluir na exportação' : 'não exportar';
+    bloco.classList.toggle('opacity-40', !checked);
+}
+
+function toggleNotaExportar() {
+    const checked = document.getElementById('modal-nota-exportar').checked;
+    const label = document.getElementById('label-nota-exportar');
+    label.textContent = checked ? 'incluir na exportação' : 'não exportar';
+    document.getElementById('modal-nota').classList.toggle('opacity-60', !checked);
+}
+
+function fecharModal() {
+    document.getElementById('modal-edicao').classList.add('hidden');
+    modalItemKey = null;
+}
+
+function toggleOriginal() {
+    const bloco = document.getElementById('bloco-original');
+    const seta = document.getElementById('seta-original');
+    const escondido = bloco.classList.toggle('hidden');
+    seta.textContent = escondido ? '▶' : '▼';
+}
+
+function copiarOriginalParaFiltrado() {
+    const entrada = textosSensiveis.find(x => chave(x.tipo, x.item.id) === modalItemKey);
+    if (!entrada) return;
+    document.getElementById('modal-texto-filtrado').value = stripHTML(entrada.item.texto || '');
+}
+
+function limparFiltrado() {
+    document.getElementById('modal-texto-filtrado').value = '';
+}
+
+function salvarVersaoFiltrada() {
+    if (!modalItemKey) return;
+
+    const texto = document.getElementById('modal-texto-filtrado').value.trim();
+    if (!texto) {
+        alert('Escreva o texto da versão filtrada antes de salvar.');
+        return;
+    }
+
+    const entrada = textosSensiveis.find(x => chave(x.tipo, x.item.id) === modalItemKey);
+    const tituloSugerido = entrada
+        ? (entrada.item.titulo ? entrada.item.titulo + ' (versão filtrada)' : '(versão filtrada)')
+        : '';
+
+    const dadosVersao = {
+        titulo:               document.getElementById('modal-titulo-filtrado').value.trim() || tituloSugerido,
+        texto,
+        nota:                 document.getElementById('modal-nota').value.trim(),
+        notaExportar:         document.getElementById('modal-nota-exportar').checked,
+        notaOriginalExportar: document.getElementById('modal-nota-original-exportar').checked,
+        substituicoes:        document.getElementById('modal-substituicoes').value.trim()
+    };
+
+    versoesFiltradas[modalItemKey] = dadosVersao;
+
+    // Persiste no banco por título (sobrevive a novos uploads)
+    if (entrada) {
+        persistirVersao(entrada.tipo, entrada.item, dadosVersao);
+        atualizarContadorBanco();
+    }
+
+    fecharModal();
+    renderLista();
+    atualizarResumo();
+}
+
+function removerVersaoFiltrada() {
+    if (!modalItemKey) return;
+    if (!confirm('Remover a versão filtrada deste texto? Ela também será removida do banco persistente.')) return;
+
+    const entrada = textosSensiveis.find(x => chave(x.tipo, x.item.id) === modalItemKey);
+    if (entrada) {
+        removerDoBanco(entrada.tipo, entrada.item.titulo);
+        atualizarContadorBanco();
+    }
+
+    delete versoesFiltradas[modalItemKey];
+    fecharModal();
+    renderLista();
+    atualizarResumo();
+}
+
+// ─── Exportação ───────────────────────────────────────────────────
+//
+// A análise interna (textosSensiveis, db.poemas/db.prosas) trabalha sempre
+// com uma versão ACHATADA do que foi carregado — é mais simples de filtrar e
+// exibir em lista. Mas o arquivo que o usuário baixa de volta precisa
+// respeitar a estrutura que ele mandou: se subiu um backup completo, volta
+// um backup completo; se subiu um "livro completo" aninhado, volta um livro
+// aninhado igual, só com os textos trocados. Por isso a exportação principal
+// nunca usa `db` (achatado) — ela clona `arquivoOriginal` e percorre essa
+// árvore aplicando as substituições nos arrays que reconhece (poemas, prosas,
+// conteudo_poemas_diretos, conteudo_prosas_diretas, conteudo_poemas,
+// conteudo_prosas, itens), preservando todo o resto exatamente como veio.
+
+const CHAVES_ARRAY_POEMA = ['poemas', 'conteudo_poemas_diretos', 'conteudo_poemas'];
+const CHAVES_ARRAY_PROSA = ['prosas', 'conteudo_prosas_diretas', 'conteudo_prosas'];
+
+function substituirSeHouverVersao(item, tipo) {
+    if (!item || !tipo) return item;
+    const vf = versoesFiltradas[chave(tipo, item.id)];
+    if (!vf) return item;
+
+    const resultado = { ...item, titulo: vf.titulo || item.titulo, texto: vf.texto };
+
+    // Nota original: mantém no JSON só se marcado "incluir na exportação"
+    if (!vf.notaOriginalExportar) {
+        delete resultado.nota;
+        delete resultado.notas;
+    }
+    // Nota da versão: inclui no JSON só se marcado "incluir na exportação"
+    if (vf.nota && vf.notaExportar) {
+        // Usa o mesmo campo que o app principal usa (notas)
+        resultado.notas = vf.nota;
+    }
+
+    return resultado;
+}
+
+// Clona recursivamente qualquer nó da árvore (objeto, array ou valor simples)
+// e, ao encontrar um array num campo conhecido (poemas/prosas/itens — em
+// qualquer nível de aninhamento: raiz, dentro de avulsos, dentro de uma Parte
+// ou Seção), aplica a substituição item a item antes de continuar recursando.
+function clonarComSubstituicoes(node, chavePai = null) {
+    if (Array.isArray(node)) {
+        if (CHAVES_ARRAY_POEMA.includes(chavePai)) {
+            return node.map(item => clonarComSubstituicoes(substituirSeHouverVersao(item, 'poema')));
+        }
+        if (CHAVES_ARRAY_PROSA.includes(chavePai)) {
+            return node.map(item => clonarComSubstituicoes(substituirSeHouverVersao(item, 'prosa')));
+        }
+        if (chavePai === 'itens') {
+            return node.map(item => clonarComSubstituicoes(substituirSeHouverVersao(item, item.tipo)));
+        }
+        return node.map(item => clonarComSubstituicoes(item));
+    }
+    if (node && typeof node === 'object') {
+        const novo = {};
+        for (const [k, v] of Object.entries(node)) {
+            novo[k] = clonarComSubstituicoes(v, k);
+        }
+        return novo;
+    }
+    return node;
+}
+
+function exportarFiltrado(apenasSubstituidos = false) {
+    if (!db || !arquivoOriginal) return;
+
+    let payload, nome;
+
+    if (apenasSubstituidos) {
+        // Relatório plano só com o que foi de fato alterado — não faz sentido
+        // aninhar isso de volta na estrutura original, é só uma lista de mudanças.
+        payload = {
+            export_format: 'versoes_filtradas',
+            gerado_em: new Date().toISOString(),
+            poemas: (db.poemas || [])
+                .filter(item => versoesFiltradas[chave('poema', item.id)])
+                .map(item => substituirSeHouverVersao(item, 'poema')),
+            prosas: (db.prosas || [])
+                .filter(item => versoesFiltradas[chave('prosa', item.id)])
+                .map(item => substituirSeHouverVersao(item, 'prosa'))
+        };
+        nome = 'arquivo_poetico_versoes_filtradas.json';
+    } else {
+        // Devolve a MESMA estrutura que foi carregada (backup completo,
+        // exportação filtrada, ou qualquer uma das exportações aninhadas),
+        // só com os textos sensíveis substituídos no lugar de origem.
+        payload = clonarComSubstituicoes(arquivoOriginal);
+        nome = 'arquivo_poetico_filtrado.json';
+    }
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+// ─── Limpar banco ────────────────────────────────────────────────
+
+function limparBanco() {
+    const total = Object.keys(bancoVersoes).length;
+    if (total === 0) { alert('O banco já está vazio.'); return; }
+    if (!confirm(`Remover todas as ${total} versão(ões) salvas no banco? Esta ação não pode ser desfeita.`)) return;
+    bancoVersoes = {};
+    salvarBanco();
+    versoesFiltradas = {};
+    atualizarContadorBanco();
+    if (db) { renderLista(); atualizarResumo(); }
+}
+
+// ─── Atalho de teclado ────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') fecharModal();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!document.getElementById('modal-edicao').classList.contains('hidden')) {
+            salvarVersaoFiltrada();
+        }
+    }
+});
+
+// ─── Init ─────────────────────────────────────────────────────────
+carregarBanco();
+renderTagsFiltro();
+atualizarContadorBanco();
+
+</script>
+</body>
+</html>

@@ -60,6 +60,9 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 ```
 /
 ├── index.html               → Esqueleto do app: header, nav, abas e #modais-container
+├── filtrar.html              → Ferramenta separada para cadastrar versões alternativas
+│                                de textos sensíveis antes de exportar para uma IA
+│                                (ver seção "Versões Alternativas" abaixo)
 ├── README.md
 │
 ├── assets/
@@ -87,7 +90,8 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 │   ├── editor.js             → Toolbar de formatação do texto + tags/pessoas
 │   ├── coletaneas.js         → Lógica da aba de Coletâneas
 │   ├── estatisticas.js       → Painel de estatísticas (Chart.js)
-│   ├── exportar.js           → Exportação filtrada + exportação aninhada completa
+│   ├── exportar.js           → Exportação seletiva (por atributos) + exportações
+│   │                           aninhadas completas
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
 │   └── utils.js              → Funções puras sem dependências internas;
@@ -134,10 +138,34 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
   para exportação parcial e botões ▲▼ para reordenação inline.
 - **Estatísticas**: resumo geral, distribuição por ano/livro/tema/pessoa
   (Chart.js) e palavras mais frequentes (com stopwords em português).
-- **Exportação filtrada**: por tipo, pessoa, tema, intervalo de datas, status
+- **Exportação seletiva**: por tipo, pessoa, tema, intervalo de datas, status
   e livros/coletâneas específicos — além da opção de exportar tudo aninhado
-  (Livro → Parte → Seção → Poema) de uma vez.
+  (Livro → Parte → Seção → Poema) de uma vez. Cada item exportado carrega
+  todos os seus campos (`notas`, `pessoas`, `sinalizacoes`, `conceitos` etc.)
+  mais o contexto (Livro/Parte/Seção) já resolvido em texto, sem necessidade
+  de cruzar IDs.
+- **Versões Alternativas (`filtrar.html`)**: ferramenta separada (link no
+  header do app) para revisar poemas/prosas marcados com tags sensíveis e
+  cadastrar versões alternativas do texto antes de exportar para uma IA.
+  Aceita tanto o backup completo quanto o JSON gerado pela Exportação seletiva.
+  As versões cadastradas ficam salvas por título no navegador (banco próprio,
+  separado do `localStorage` do app principal) e são reaplicadas
+  automaticamente em uploads futuros.
 - **Import/export de JSON** para backup completo do acervo (dados textuais).
+
+---
+
+## Formatos de JSON exportados
+
+O app gera quatro tipos distintos de JSON, cada um com um campo `export_format`
+que identifica o formato:
+
+| `export_format` | Gerado por | Estrutura |
+|---|---|---|
+| _(ausente)_ | "Baixar JSON" no header | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }` |
+| `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo" | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido |
+| `deep_nesting` | "Exportar tudo aninhado" | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }` |
+| _(livro individual)_ | "Baixar este livro completo" | Objeto único de livro com toda a árvore aninhada |
 
 ---
 
@@ -167,3 +195,48 @@ capa correspondente é removida automaticamente.
 > **Portabilidade**: ao copiar o backup `.json` para outra máquina, os dados
 > textuais chegam completos; as capas não acompanham (o campo `capa` no JSON
 > fica como ID órfão e a imagem simplesmente não aparece).
+
+---
+
+## Versões Alternativas (`filtrar.html`)
+
+Página separada (fora do SPA de `index.html`, acessada pelo botão "Versões
+Alternativas" no header) para revisar textos marcados com tags sensíveis e
+cadastrar uma versão alternativa de cada um antes de exportar o acervo para
+uma IA. As versões cadastradas (`tituloFiltrado`, `textoFiltrado`, `nota`)
+ficam salvas por título num banco próprio no `localStorage`, separado do
+banco principal do app — sobrevivem a novos uploads e podem ser
+exportadas/importadas independentemente (botões "Exportar banco" / "Importar
+banco"). A nota interna de cada versão alternativa é salva apenas nesse banco
+e **nunca sai no JSON exportado**.
+
+### Distinção de nomenclatura
+
+O app usa dois mecanismos diferentes que poderiam ser confundidos:
+
+- **Exportação seletiva** (aba Exportação): filtra *quais* itens entram no
+  JSON, por pessoa, tema, data, status ou livro. Não altera nenhum texto.
+- **Versões Alternativas** (`filtrar.html`): substitui o *conteúdo* de textos
+  sensíveis por versões limpas. Não filtra quais itens aparecem.
+
+### Formatos de JSON aceitos no upload
+
+`filtrar.html` reconhece dois formatos diferentes de arquivo:
+
+1. **Backup completo** (`exportarJSON()`, botão "Baixar JSON" no header) —
+   `{ livros, partes, secoes, poemas, prosas, ... }`. Os textos vêm com
+   `paiTipo`/`paiId`, e o nome do livro/parte/seção é resolvido consultando
+   `db.livros`/`db.partes`/`db.secoes` dentro do próprio `filtrar.html`.
+2. **Exportação seletiva** (aba Exportação → "Baixar JSON seletivo") —
+   `{ export_format: 'exportacao_seletiva', itens: [...], coletaneas: [...] }`.
+   Cada item já vem com `tipo` (`'poema'` ou `'prosa'`) e um campo
+   `contexto: { livro, parte, secao }` já resolvido como texto.
+
+`filtrar.html` detecta o formato pela presença do campo `itens` e ajusta a
+leitura do contexto de acordo.
+
+> **Limitação conhecida**: itens de Coletânea presentes na exportação seletiva
+> (`coletaneas`) não passam pela varredura de tags sensíveis — o registro de
+> `itensColetanea` não carrega `sinalizacoes`/`pessoas` próprias (esses campos
+> pertencem ao poema/prosa original referenciado por `refId`). Um aviso aparece
+> na tela quando o JSON carregado contiver coletâneas.

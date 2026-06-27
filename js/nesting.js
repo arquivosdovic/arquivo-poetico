@@ -61,7 +61,7 @@ export function getSecoes(paiId, paiTipo, db) {
             s.conteudo_elementos = (db.elementos || []).filter(e => e.paiId == s.id && e.paiTipo === 'secao');
             s.conteudo_poemas    = db.poemas.filter(p => p.paiId == s.id && p.paiTipo === 'secao');
             s.conteudo_prosas    = (db.prosas || []).filter(pr =>
-                (pr.paiId == s.id && pr.paiTipo === 'secao') || pr.secaoId == s.id
+                pr.paiId == s.id && pr.paiTipo === 'secao'
             );
             return s;
         });

@@ -22,8 +22,8 @@ import { renderLists, setFiltroPoemas, setFiltroProsas,
          setFiltroLivroProsa,
          toggleSelecaoEstrutura, marcarTodosEstrutura,
          exportarSelecaoEstrutura }                          from './render.js';
-import { previsualizarExportacaoFiltrada,
-         executarExportacaoFiltrada,
+import { previsualizarExportacaoSeletiva,
+         executarExportacaoSeletiva,
          popularSelecaoExportacao,
          exportarTudoAninhado,
          exportarLivroCompleto,
@@ -144,8 +144,8 @@ window.setFiltroLivroPartes    = setFiltroLivroPartes;
 window.setFiltroLivroSecoes    = setFiltroLivroSecoes;
 window.setFiltroParteSecoes    = setFiltroParteSecoes;
 window.setFiltroLivroElementos = setFiltroLivroElementos;
-window.previsualizarExportacaoFiltrada = previsualizarExportacaoFiltrada;
-window.executarExportacaoFiltrada      = executarExportacaoFiltrada;
+window.previsualizarExportacaoSeletiva = previsualizarExportacaoSeletiva;
+window.executarExportacaoSeletiva      = executarExportacaoSeletiva;
 window.renderEstatisticas              = renderEstatisticas;
 window.exportarTudoAninhado            = exportarTudoAninhado;
 window.exportarLivroCompleto           = exportarLivroCompleto;

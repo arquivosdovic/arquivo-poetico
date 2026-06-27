@@ -1,8 +1,15 @@
 // ============================================================
-// exportar.js — Exportação filtrada (por pessoa, tema, ano, status)
-// Gera um JSON "flat enriquecido": cada item já vem com o contexto
-// (Livro/Parte/Seção) resolvido inline, pra não exigir que quem for
-// processar precise cruzar IDs com outras partes do arquivo.
+// exportar.js — Exportação seletiva (por pessoa, tema, ano, status)
+// e exportações aninhadas completas.
+//
+// Nomenclatura:
+//   "Exportação seletiva" = filtra itens por atributos (pessoa,
+//   tema, data, status, livro) → JSON flat enriquecido com contexto
+//   (Livro/Parte/Seção) resolvido inline.
+//
+//   "Versões alternativas" (filtrar.html) = ferramenta separada que
+//   substitui textos sensíveis por versões limpas antes de enviar a
+//   uma IA — não tem relação com esta filtragem por atributos.
 // ============================================================
 
 import { db } from './db.js';
@@ -224,22 +231,17 @@ function resolverContexto(item) {
 }
 
 function montarRegistro(tipo, item) {
+    // Spread garante que todos os campos do item chegam ao JSON
+    // (notas, conceitos, livrosIds, etc.) sem precisar listá-los
+    // manualmente. tipo e contexto são adicionados/sobrescritos depois.
     return {
+        ...item,
         tipo,
-        id: item.id,
-        titulo: item.titulo,
-        texto: item.texto,
-        ano: item.ano || null,
-        dataEscrita: item.dataEscrita || null,
-        dataPublicacao: item.dataPublicacao || null,
-        sinalizacoes: item.sinalizacoes || '',
-        pessoas: item.pessoas || '',
-        publicado: !!item.publicado,
         contexto: resolverContexto(item)
     };
 }
 
-export function gerarExportacaoFiltrada(opcoes) {
+export function gerarExportacaoSeletiva(opcoes) {
     const itens = [];
     if (opcoes.tipos.includes('poema')) {
         db.poemas.filter(p => correspondeFiltro(p, opcoes)).forEach(p => itens.push(montarRegistro('poema', p)));
@@ -261,9 +263,9 @@ export function gerarExportacaoFiltrada(opcoes) {
     return { itens, coletaneas };
 }
 
-export function previsualizarExportacaoFiltrada() {
+export function previsualizarExportacaoSeletiva() {
     const opcoes = lerFiltrosDoFormulario();
-    const { itens, coletaneas } = gerarExportacaoFiltrada(opcoes);
+    const { itens, coletaneas } = gerarExportacaoSeletiva(opcoes);
     const span = document.getElementById('exp-resultado');
     if (span) {
         span.innerText = `${itens.length} poema(s)/prosa(s)` +
@@ -271,9 +273,9 @@ export function previsualizarExportacaoFiltrada() {
     }
 }
 
-export function executarExportacaoFiltrada() {
+export function executarExportacaoSeletiva() {
     const opcoes = lerFiltrosDoFormulario();
-    const { itens, coletaneas } = gerarExportacaoFiltrada(opcoes);
+    const { itens, coletaneas } = gerarExportacaoSeletiva(opcoes);
 
     if (itens.length === 0 && coletaneas.length === 0) {
         const span = document.getElementById('exp-resultado');
@@ -281,13 +283,13 @@ export function executarExportacaoFiltrada() {
         return;
     }
 
-    const saida = { itens, coletaneas };
+    const saida = { export_format: 'exportacao_seletiva', itens, coletaneas };
     const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = `exportacao_filtrada_${Date.now()}.json`;
+    a.download = `exportacao_seletiva_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);

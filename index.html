@@ -20,6 +20,9 @@
             <h1 class="text-2xl font-light tracking-tight">Arquivo <span class="font-bold text-blue-700">Poético</span>
             </h1>
             <div class="flex items-center gap-2">
+                <a href="filtrar.html"
+                    class="border border-gray-300 text-gray-600 px-4 py-2 rounded-md hover:bg-gray-50 transition text-sm font-medium">Versões
+                    Alternativas</a>
                 <input type="file" id="import-json" class="hidden" accept=".json" onchange="importarJSON(event)">
                 <button onclick="document.getElementById('import-json').click()"
                     class="border border-blue-600 text-blue-600 px-4 py-2 rounded-md hover:bg-blue-50 transition text-sm font-medium">Importar
@@ -360,12 +363,18 @@
                 </div>
 
                 <div class="flex items-center gap-4 pt-2 border-t">
-                    <button onclick="previsualizarExportacaoFiltrada()"
+                    <p class="text-[10px] text-gray-400">
+                        Quer revisar/substituir textos sensíveis antes de exportar? Abra o JSON em
+                        <a href="filtrar.html" class="text-blue-600 hover:underline">Versões Alternativas</a>.
+                    </p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="previsualizarExportacaoSeletiva()"
                         class="bg-gray-100 text-gray-700 px-4 py-2 rounded font-bold text-sm">Pré-visualizar
                         contagem</button>
-                    <button onclick="executarExportacaoFiltrada()"
+                    <button onclick="executarExportacaoSeletiva()"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow font-bold text-sm">Baixar JSON
-                        filtrado</button>
+                        seletivo</button>
                     <span id="exp-resultado" class="text-xs text-gray-500"></span>
                 </div>
 

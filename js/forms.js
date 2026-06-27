@@ -163,6 +163,7 @@ export async function editarParte(id) {
     document.getElementById('part-sequencia').value     = p.sequencia || '';
     document.getElementById('part-capa-desc').value     = p.capaDesc || '';
     document.getElementById('part-abertura').value      = p.abertura || '';
+    document.getElementById('part-capa').value          = ''; // limpa seleção anterior — sem arquivo novo, preserva capa atual
     document.getElementById('modal-parte-titulo').innerText = 'Editar Parte';
     toggleModal('modal-parte');
 }
@@ -372,7 +373,6 @@ export function initFormProsa() {
             ano:       dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
             paiTipo,
             paiId,
-            secaoId:      paiTipo === 'secao' ? paiId : null,   // legado
             notas:        document.getElementById('pr-notas').value,
             sinalizacoes: document.getElementById('pr-sinal').value,
             pessoas:      document.getElementById('pr-pessoas').value,
@@ -421,7 +421,7 @@ export async function editarProsa(id) {
 
     const destinoStr = (pr.paiTipo && pr.paiId)
         ? `${pr.paiTipo}:${pr.paiId}`
-        : (pr.secaoId ? `secao:${pr.secaoId}` : '');
+        : (pr.secaoId ? `secao:${pr.secaoId}` : ''); // compatibilidade: prosas salvas antes da remoção do campo legado
     sincronizarFiltroDestino('pr-destino-filtro', 'pr-destino', destinoStr);
 
     document.getElementById('pr-notas').value  = pr.notas || '';
