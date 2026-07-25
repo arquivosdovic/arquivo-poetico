@@ -104,8 +104,8 @@
             <span class="text-xs font-normal text-gray-400">(persiste entre sessões e uploads)</span>
         </h2>
         <p class="text-xs text-gray-500 mb-4">
-            As versões que você cadastra ficam salvas por título no navegador. Ao subir um novo JSON,
-            elas são reaplicadas automaticamente. Use os botões abaixo para fazer backup ou migrar para outro dispositivo.
+            As versões que você cadastra ficam salvas no navegador, vinculadas ao item original. Ao subir um novo
+            JSON, elas são reaplicadas automaticamente. Use os botões abaixo para fazer backup ou migrar para outro dispositivo.
         </p>
         <div class="flex flex-wrap items-center gap-3">
             <span id="contador-banco" class="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1.5 rounded-full">banco vazio</span>
@@ -122,6 +122,9 @@
                 Limpar banco
             </button>
         </div>
+        <!-- Lista das versões já salvas — visível mesmo sem ter subido nenhum JSON
+             ainda, já que o banco em si não depende de upload nenhum. -->
+        <div id="lista-banco-standalone" class="hidden"></div>
     </section>
 
     <!-- Banner de reconhecimento automático (aparece após upload) -->
@@ -330,8 +333,123 @@
     </div>
 </div>
 
+<!-- Modal de edição SEM o original (usado pela lista "Versões já salvas
+     neste navegador", que funciona mesmo sem ter subido nenhum JSON).
+     É um modal separado de #modal-edicao — esse último depende do item
+     original (texto, tags, nota original), que aqui não existe. -->
+<div id="modal-banco-edicao" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="fecharModalBanco()"></div>
+
+    <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div class="pointer-events-auto bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh]
+                    overflow-y-auto flex flex-col">
+
+            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
+                <div>
+                    <div id="mb-tipo-badge" class="badge badge-neutral mb-1.5"></div>
+                    <h3 id="mb-titulo" class="font-bold text-lg leading-tight"></h3>
+                    <p class="text-xs text-gray-400 mt-1">Atualizado em <span id="mb-atualizado-em"></span></p>
+                </div>
+                <button onclick="fecharModalBanco()" class="text-gray-400 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
+            </div>
+
+            <div class="p-6 space-y-5 flex-1">
+                <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                    Editando sem o texto original por perto (nenhum JSON foi carregado). Pra comparar com o
+                    original ou revisar a filtragem em si, carregue o backup do acervo lá em cima.
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                        Versão filtrada
+                    </label>
+                    <textarea id="mb-texto" class="w-full border border-gray-300 rounded-xl p-4 resize-none
+                              focus:outline-none focus:ring-2 focus:ring-blue-300" rows="12"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                        Título na versão filtrada
+                        <span class="font-normal normal-case text-gray-400 ml-1">— deixe em branco para usar o original</span>
+                    </label>
+                    <input id="mb-titulo-filtrado" type="text"
+                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
+                                  focus:ring-2 focus:ring-blue-300">
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                        Nota da versão
+                    </label>
+                    <textarea id="mb-nota" rows="2"
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                                     focus:outline-none focus:ring-2 focus:ring-blue-300"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                        Substituições
+                        <span class="font-normal normal-case text-gray-400 ml-1">— registro do que foi trocado, nunca exportado</span>
+                    </label>
+                    <textarea id="mb-substituicoes" rows="3"
+                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                                     focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"></textarea>
+                </div>
+            </div>
+
+            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white">
+                <button onclick="removerVersaoBancoStandalone(this)"
+                        id="mb-botao-remover"
+                        class="text-sm text-red-500 hover:text-red-700 transition">
+                    Remover versão salva
+                </button>
+                <div class="flex gap-2 ml-auto">
+                    <button onclick="fecharModalBanco()"
+                            class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                        Cancelar
+                    </button>
+                    <button onclick="salvarEdicaoBancoStandalone()"
+                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow">
+                        Salvar alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ── SCRIPT ───────────────────────────────────────────────────── -->
 <script>
+
+// ─── UI compartilhada com o app principal ──────────────────────────
+// filtrar.html não é um módulo ES (tem ~16 onclick inline que dependem
+// de escopo global — ver nota mais abaixo, perto de lerArquivo), então
+// não dá pra fazer `import { ... } from './js/utils.js'` no topo do
+// jeito normal. Em vez disso, um único import() dinâmico carrega o
+// modal de confirmação e o toast de aviso (mesmos usados no app
+// principal) assim que a página abre, evitando o alert()/confirm()
+// nativos do navegador — que travam a página e destoam do resto da UI.
+//
+// O fallback abaixo só entraria em ação se algo chamasse essas funções
+// nos primeiríssimos milissegundos antes do import resolver — na
+// prática, como tudo aqui é disparado por clique do usuário (bem depois
+// da página carregada), isso nunca acontece de verdade.
+let abrirModalExclusao = (titulo, rotulo, onConfirmar) => { if (confirm(`${rotulo}: ${titulo}?`)) onConfirmar(); };
+let mostrarAviso = (msg) => alert(msg);
+import('./js/utils.js').then(m => {
+    abrirModalExclusao = m.abrirModalExclusao;
+    mostrarAviso = m.mostrarAviso;
+});
+
+// flattenLivroAninhado/pareceLivroAninhado desmontam a árvore aninhada
+// (ver comentário mais detalhado perto de lerArquivo, mais abaixo) —
+// ficam em nesting.js, a fonte única do formato dessa árvore.
+let flattenLivroAninhado = null;
+let pareceLivroAninhado  = null;
+import('./js/nesting.js').then(m => {
+    flattenLivroAninhado = m.flattenLivroAninhado;
+    pareceLivroAninhado  = m.pareceLivroAninhado;
+});
 
 // ─── Estado ──────────────────────────────────────────────────────
 
@@ -347,13 +465,22 @@ let tagsFiltro = [
 ];
 
 // ─── Persistência em localStorage ────────────────────────────────
-// O banco de versões é indexado por "tipo:titulo" (não por id),
-// para sobreviver à troca de JSON sem perder as substituições.
+// O banco de versões é indexado por "tipo:id" (chave estável do item).
+// Antes era indexado por "tipo:titulo" — mas editar o título de um
+// poema/prosa depois de já ter uma versão alternativa cadastrada
+// quebrava o vínculo silenciosamente (a versão salva parava de casar
+// em uploads futuros). Por id o vínculo sobrevive a renomeações.
+//
+// Entradas antigas (de antes dessa mudança) continuam no formato
+// "tipo:título" e não são migradas automaticamente — por isso
+// reconciliarComBanco() ainda faz um fallback por tituloOriginal,
+// só pra não perder versões já cadastradas. Toda vez que uma versão
+// é salva de novo, ela passa a ser gravada já no formato novo (por id).
 
 const LS_KEY_VERSOES = 'arquivoPoetico_versoesFiltradas_v1';
 const LS_KEY_TAGS    = 'arquivoPoetico_tagsFiltro_v1';
 
-// { "tipo:titulo" → { tipo, titulo, textoFiltrado, tituloFiltrado, nota } }
+// { "tipo:id" → { tipo, tituloOriginal, textoFiltrado, tituloFiltrado, nota } }
 let bancoVersoes = {};
 
 function salvarBanco() {
@@ -376,9 +503,18 @@ function carregarBanco() {
     }
 }
 
-// Chave de sessão (por id do item atual) → chave do banco (por título)
-function chaveBanco(tipo, titulo) {
-    return `${tipo}:${titulo}`;
+// Chave do banco: por id do item (estável mesmo se o título mudar).
+function chaveBanco(tipo, id) {
+    return `${tipo}:${id}`;
+}
+
+// Busca uma entrada legada (formato antigo "tipo:título") por título,
+// só usada como fallback quando não há entrada pelo id novo.
+function buscarEntradaLegadaPorTitulo(tipo, titulo) {
+    if (!titulo) return null;
+    return Object.values(bancoVersoes).find(v =>
+        v.tipo === tipo && (v.tituloOriginal || '') === titulo
+    ) || null;
 }
 
 // Ao abrir um JSON, resolve quais itens já têm versão no banco
@@ -388,8 +524,8 @@ function reconciliarComBanco() {
     let reconhecidos = 0;
 
     textosSensiveis.forEach(({ tipo, item }) => {
-        const kb = chaveBanco(tipo, item.titulo || '');
-        const entrada = bancoVersoes[kb];
+        const kb = chaveBanco(tipo, item.id);
+        const entrada = bancoVersoes[kb] || buscarEntradaLegadaPorTitulo(tipo, item.titulo || '');
         if (entrada) {
             versoesFiltradas[chave(tipo, item.id)] = {
                 titulo:               entrada.tituloFiltrado,
@@ -406,9 +542,9 @@ function reconciliarComBanco() {
     return reconhecidos;
 }
 
-// Quando uma versão é salva na sessão, persiste também no banco por título
+// Quando uma versão é salva na sessão, persiste também no banco por id
 function persistirVersao(tipo, item, dadosVersao) {
-    const kb = chaveBanco(tipo, item.titulo || '');
+    const kb = chaveBanco(tipo, item.id);
     bancoVersoes[kb] = {
         tipo,
         tituloOriginal:       item.titulo || '',
@@ -423,9 +559,15 @@ function persistirVersao(tipo, item, dadosVersao) {
     salvarBanco();
 }
 
-function removerDoBanco(tipo, tituloOriginal) {
-    const kb = chaveBanco(tipo, tituloOriginal || '');
-    delete bancoVersoes[kb];
+function removerDoBanco(tipo, id, tituloOriginal) {
+    delete bancoVersoes[chaveBanco(tipo, id)];
+    // Também limpa uma eventual entrada legada (formato antigo por título)
+    // pro mesmo item, pra não ela "ressuscitar" a versão no próximo upload.
+    const legada = buscarEntradaLegadaPorTitulo(tipo, tituloOriginal || '');
+    if (legada) {
+        const kbLegada = Object.keys(bancoVersoes).find(k => bancoVersoes[k] === legada);
+        if (kbLegada) delete bancoVersoes[kbLegada];
+    }
     salvarBanco();
 }
 
@@ -433,7 +575,7 @@ function removerDoBanco(tipo, tituloOriginal) {
 function exportarBanco() {
     const total = Object.keys(bancoVersoes).length;
     if (total === 0) {
-        alert('Nenhuma versão filtrada cadastrada ainda.');
+        mostrarAviso('Nenhuma versão filtrada cadastrada ainda.', 'info');
         return;
     }
     const payload = {
@@ -487,10 +629,10 @@ function importarBanco(event) {
                 atualizarResumo();
                 mostrarBannerReconhecimento(r, importados);
             } else {
-                alert(`✓ ${importados} versão(ões) importada(s) para o banco.\nCarregue um JSON do acervo para aplicá-las.`);
+                mostrarAviso(`✓ ${importados} versão(ões) importada(s) para o banco. Carregue um JSON do acervo para aplicá-las.`, 'sucesso');
             }
         } catch {
-            alert('Não foi possível ler o arquivo de banco.');
+            mostrarAviso('Não foi possível ler o arquivo de banco.');
         }
     };
     reader.readAsText(file);
@@ -501,6 +643,123 @@ function atualizarContadorBanco() {
     const total = Object.keys(bancoVersoes).length;
     const el = document.getElementById('contador-banco');
     if (el) el.textContent = total > 0 ? `${total} versão(ões) salva(s)` : 'banco vazio';
+    renderBancoStandalone();
+}
+
+const ROTULO_TIPO_BANCO = { poema: 'Poema', prosa: 'Prosa' };
+let modalBancoChave = null; // chave (tipo:id) do registro aberto em #modal-banco-edicao
+
+// Lista as versões já salvas no banco, direto do localStorage — não
+// depende de ter subido um JSON, já que os dados vêm de bancoVersoes,
+// que é independente disso. Cada botão carrega tipo/chave/título via
+// data-attribute (não interpolado dentro do onclick) pra não quebrar
+// se o título tiver aspas.
+function renderBancoStandalone() {
+    const container = document.getElementById('lista-banco-standalone');
+    if (!container) return;
+
+    const entradas = Object.entries(bancoVersoes)
+        .map(([chaveArmazenada, registro]) => ({ chaveArmazenada, ...registro }))
+        .sort((a, b) => (b.atualizadoEm || '').localeCompare(a.atualizadoEm || ''));
+
+    if (entradas.length === 0) {
+        container.classList.add('hidden');
+        container.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('hidden');
+    container.innerHTML = `
+        <p class="text-xs text-gray-400 mt-4 mb-2">
+            Versões já salvas neste navegador — dá pra ver/editar direto aqui, ou suba o JSON do acervo
+            pra comparar com o texto original.
+        </p>
+        <div class="space-y-1.5">
+            ${entradas.map(reg => `
+                <div class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                    <button class="min-w-0 truncate text-left flex-1 hover:underline"
+                        data-chave="${escapeHtml(reg.chaveArmazenada)}"
+                        onclick="abrirModalBanco(this.dataset.chave)">
+                        <span class="inline-block text-[9px] uppercase font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mr-1.5 align-middle">${escapeHtml(ROTULO_TIPO_BANCO[reg.tipo] || reg.tipo)}</span>
+                        <span class="font-medium text-gray-700 align-middle">${escapeHtml(reg.tituloFiltrado || reg.tituloOriginal) || '(sem título)'}</span>
+                        ${reg.tituloOriginal && reg.tituloFiltrado && reg.tituloOriginal !== reg.tituloFiltrado
+                            ? `<span class="text-gray-400 align-middle"> (original: ${escapeHtml(reg.tituloOriginal)})</span>`
+                            : ''}
+                    </button>
+                    <button data-chave="${escapeHtml(reg.chaveArmazenada)}" data-tipo="${escapeHtml(reg.tipo)}" data-titulo="${escapeHtml(reg.tituloOriginal || '')}"
+                        onclick="removerVersaoBancoStandalone(this)"
+                        class="text-red-400 hover:text-red-600 flex-shrink-0">remover</button>
+                </div>`).join('')}
+        </div>`;
+}
+
+function abrirModalBanco(chaveArmazenada) {
+    const reg = bancoVersoes[chaveArmazenada];
+    if (!reg) return;
+    modalBancoChave = chaveArmazenada;
+
+    document.getElementById('mb-tipo-badge').textContent = (ROTULO_TIPO_BANCO[reg.tipo] || reg.tipo).toUpperCase();
+    document.getElementById('mb-titulo').textContent = reg.tituloOriginal || reg.tituloFiltrado || '(sem título)';
+    document.getElementById('mb-atualizado-em').textContent = reg.atualizadoEm
+        ? new Date(reg.atualizadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : '—';
+
+    document.getElementById('mb-texto').value = reg.textoFiltrado || '';
+    document.getElementById('mb-titulo-filtrado').value = reg.tituloFiltrado || '';
+    document.getElementById('mb-nota').value = reg.nota || '';
+    document.getElementById('mb-substituicoes').value = reg.substituicoes || '';
+
+    const btnRemover = document.getElementById('mb-botao-remover');
+    btnRemover.dataset.chave  = chaveArmazenada;
+    btnRemover.dataset.tipo   = reg.tipo;
+    btnRemover.dataset.titulo = reg.tituloOriginal || '';
+
+    document.getElementById('modal-banco-edicao').classList.remove('hidden');
+    document.getElementById('mb-texto').focus();
+}
+
+function fecharModalBanco() {
+    document.getElementById('modal-banco-edicao').classList.add('hidden');
+    modalBancoChave = null;
+}
+
+function salvarEdicaoBancoStandalone() {
+    if (!modalBancoChave) return;
+    const reg = bancoVersoes[modalBancoChave];
+    if (!reg) return;
+
+    const texto = document.getElementById('mb-texto').value.trim();
+    if (!texto) {
+        mostrarAviso('Escreva o texto da versão filtrada antes de salvar.');
+        return;
+    }
+
+    reg.textoFiltrado  = texto;
+    reg.tituloFiltrado = document.getElementById('mb-titulo-filtrado').value.trim();
+    reg.nota           = document.getElementById('mb-nota').value.trim();
+    reg.substituicoes  = document.getElementById('mb-substituicoes').value.trim();
+    reg.atualizadoEm   = new Date().toISOString();
+    salvarBanco();
+
+    // Se um JSON já estiver carregado nesta sessão e esse mesmo item
+    // aparecer na lista principal, sincroniza os dois — sem isso, a
+    // versão editada aqui ficaria "desatualizada" na tela até recarregar.
+    if (db) { reconciliarComBanco(); renderLista(); atualizarResumo(); }
+
+    fecharModalBanco();
+    atualizarContadorBanco(); // já chama renderBancoStandalone() de novo
+}
+
+function removerVersaoBancoStandalone(botao) {
+    const { chave: chaveArmazenada, tipo, titulo } = botao.dataset;
+    const id = chaveArmazenada.slice(tipo.length + 1); // remove o prefixo "tipo:"
+
+    abrirModalExclusao(titulo || '(sem título)', 'Remover versão salva', () => {
+        removerDoBanco(tipo, id, titulo);
+        fecharModalBanco(); // fecha o modal de edição, se essa remoção veio de lá
+        atualizarContadorBanco(); // já chama renderBancoStandalone() de novo
+        if (db) { renderLista(); atualizarResumo(); } // se já tiver um JSON carregado nesta sessão
+    });
 }
 
 function mostrarBannerReconhecimento(reconhecidos, total) {
@@ -539,6 +798,16 @@ function stripHTML(html) {
     return html.replace(/<[^>]+>/g, '');
 }
 
+function escapeHtml(valor) {
+    if (valor === null || valor === undefined) return '';
+    return String(valor)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
 function contarPalavras(texto) {
     return (stripHTML(texto).match(/\S+/g) || []).length;
 }
@@ -560,47 +829,14 @@ function carregarJSON(event) {
 
 // ─── Desaninhamento (formatos vindos de buildNesting/buildNestingLivro) ─────
 // exportarTudoAninhado / exportarLivroCompleto / exportarLivrosCompletos geram
-// uma árvore Livro → Parte → Seção → Poema/Prosa (ver nesting.js no app
-// principal), sem db.livros/partes/secoes separados. Aqui achatamos essa
-// árvore numa lista plana de poemas/prosas com contexto já resolvido, igual
-// ao que já fazemos para a Exportação filtrada.
-
-function flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut) {
-    const nomeSecao = secao.titulo || null;
-    const contexto = { livro: nomeLivro, parte: nomeParte, secao: nomeSecao };
-    (secao.conteudo_poemas || []).forEach(p => poemasOut.push({ ...p, contexto }));
-    (secao.conteudo_prosas || []).forEach(p => prosasOut.push({ ...p, contexto }));
-}
-
-function flattenLivroAninhado(livro, poemasOut, prosasOut) {
-    const nomeLivro = livro.siglaOficial || livro.siglaPessoal || livro.titulo || null;
-
-    let contexto = { livro: nomeLivro, parte: null, secao: null };
-    (livro.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto }));
-    (livro.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto }));
-
-    (livro.conteudo_secoes_diretas || []).forEach(secao =>
-        flattenSecaoAninhada(secao, nomeLivro, null, poemasOut, prosasOut));
-
-    (livro.conteudo_partes || []).forEach(parte => {
-        const nomeParte = parte.titulo || null;
-        const contextoParte = { livro: nomeLivro, parte: nomeParte, secao: null };
-        (parte.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto: contextoParte }));
-        (parte.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto: contextoParte }));
-        (parte.conteudo_secoes || []).forEach(secao =>
-            flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut));
-    });
-}
-
-// Detecta se um objeto "parece" um Livro aninhado (tem ao menos uma das
-// chaves de conteúdo que só existem nessa árvore, geradas por buildNesting).
-function pareceLivroAninhado(obj) {
-    return !!obj && (
-        'conteudo_partes' in obj ||
-        'conteudo_poemas_diretos' in obj ||
-        'conteudo_secoes_diretas' in obj
-    );
-}
+// uma árvore Livro → Parte → Seção → Poema/Prosa. flattenLivroAninhado() e
+// pareceLivroAninhado() desmontam essa árvore numa lista plana — mas em vez
+// de reimplementar essa lógica aqui (que antes duplicava os nomes de campo
+// definidos em nesting.js, e podia sair de sincronia se algo lá mudasse),
+// importamos as funções direto de lá, na hora de usar (ver lerArquivo abaixo).
+// filtrar.html não é um módulo ES (tem 16 onclick inline que dependem de
+// escopo global), então usamos import() dinâmico só nesse ponto específico,
+// em vez de converter a página inteira pra type="module".
 
 function lerArquivo(file) {
 
@@ -613,6 +849,14 @@ function lerArquivo(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
+            if (!flattenLivroAninhado) {
+                // Import do topo do script ainda não terminou (bem raro —
+                // só aconteceria se o arquivo fosse escolhido nos primeiros
+                // instantes da página aberta). Só recusa com uma mensagem
+                // clara em vez de estourar um erro confuso mais abaixo.
+                mostrarStatus('A página ainda está carregando — espera um instante e tenta de novo.', 'error');
+                return;
+            }
             const parsed = JSON.parse(e.target.result);
             arquivoOriginal = parsed; // preserva a árvore exatamente como veio, pra exportação respeitar a estrutura
 
@@ -705,7 +949,7 @@ function renderTagsFiltro() {
     const lista = document.getElementById('lista-tags-filtro');
     lista.innerHTML = tagsFiltro.map(tag => `
         <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1 rounded-full">
-            ${tag}
+            ${escapeHtml(tag)}
             <button onclick="removerTagFiltro('${tag.replace(/'/g,"\\'")}')"
                     class="hover:text-red-600 font-bold ml-0.5 text-amber-600">×</button>
         </span>`).join('');
@@ -819,20 +1063,20 @@ function renderLista() {
                           style="font-size:9px">
                         ${tipo.toUpperCase()}
                     </span>
-                    ${tags.map(t => `<span class="badge badge-warn">${t}</span>`).join('')}
+                    ${tags.map(t => `<span class="badge badge-warn">${escapeHtml(t)}</span>`).join('')}
                     ${vf ? `<span class="badge badge-ok">✓ versão filtrada</span>` : ''}
                 </div>
-                <h3 class="font-semibold text-gray-800 leading-tight">${item.titulo || '(sem título)'}</h3>
+                <h3 class="font-semibold text-gray-800 leading-tight">${escapeHtml(item.titulo) || '(sem título)'}</h3>
                 <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-400">
-                    ${livro ? `<span>📚 ${livro}</span>` : ''}
+                    ${livro ? `<span>📚 ${escapeHtml(livro)}</span>` : ''}
                     ${item.ano ? `<span>📅 ${item.ano}</span>` : ''}
                     <span>${palavras} palavras</span>
                 </div>
                 ${vf ? `
                 <div class="mt-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
-                    ✓ <strong>${vf.titulo || item.titulo + ' (versão filtrada)'}</strong>
+                    ✓ <strong>${escapeHtml(vf.titulo) || escapeHtml(item.titulo) + ' (versão filtrada)'}</strong>
                     — ${contarPalavras(vf.texto)} palavras
-                    ${vf.nota ? `· <em class="text-gray-500">${vf.nota}</em>` : ''}
+                    ${vf.nota ? `· <em class="text-gray-500">${escapeHtml(vf.nota)}</em>` : ''}
                 </div>` : ''}
             </div>
             <div class="flex flex-col gap-2 shrink-0">
@@ -879,7 +1123,7 @@ function abrirModal(tipo, id) {
     document.getElementById('modal-tipo-badge').className = `badge mb-1.5 ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 text-purple-700'}`;
     document.getElementById('modal-titulo').textContent = item.titulo || '(sem título)';
     document.getElementById('modal-tags-orig').innerHTML = tags.map(t =>
-        `<span class="badge badge-warn">${t}</span>`).join('');
+        `<span class="badge badge-warn">${escapeHtml(t)}</span>`).join('');
 
     // Texto original — strip HTML para exibição limpa
     document.getElementById('modal-texto-original').textContent = stripHTML(item.texto || '');
@@ -960,7 +1204,7 @@ function salvarVersaoFiltrada() {
 
     const texto = document.getElementById('modal-texto-filtrado').value.trim();
     if (!texto) {
-        alert('Escreva o texto da versão filtrada antes de salvar.');
+        mostrarAviso('Escreva o texto da versão filtrada antes de salvar.');
         return;
     }
 
@@ -980,7 +1224,8 @@ function salvarVersaoFiltrada() {
 
     versoesFiltradas[modalItemKey] = dadosVersao;
 
-    // Persiste no banco por título (sobrevive a novos uploads)
+    // Persiste no banco por id do item (sobrevive a novos uploads e a
+    // renomeações de título)
     if (entrada) {
         persistirVersao(entrada.tipo, entrada.item, dadosVersao);
         atualizarContadorBanco();
@@ -993,18 +1238,20 @@ function salvarVersaoFiltrada() {
 
 function removerVersaoFiltrada() {
     if (!modalItemKey) return;
-    if (!confirm('Remover a versão filtrada deste texto? Ela também será removida do banco persistente.')) return;
 
     const entrada = textosSensiveis.find(x => chave(x.tipo, x.item.id) === modalItemKey);
-    if (entrada) {
-        removerDoBanco(entrada.tipo, entrada.item.titulo);
-        atualizarContadorBanco();
-    }
 
-    delete versoesFiltradas[modalItemKey];
-    fecharModal();
-    renderLista();
-    atualizarResumo();
+    abrirModalExclusao(entrada?.item.titulo || '(sem título)', 'Remover versão filtrada', () => {
+        if (entrada) {
+            removerDoBanco(entrada.tipo, entrada.item.id, entrada.item.titulo);
+            atualizarContadorBanco();
+        }
+
+        delete versoesFiltradas[modalItemKey];
+        fecharModal();
+        renderLista();
+        atualizarResumo();
+    });
 }
 
 // ─── Exportação ───────────────────────────────────────────────────
@@ -1113,22 +1360,27 @@ function exportarFiltrado(apenasSubstituidos = false) {
 
 function limparBanco() {
     const total = Object.keys(bancoVersoes).length;
-    if (total === 0) { alert('O banco já está vazio.'); return; }
-    if (!confirm(`Remover todas as ${total} versão(ões) salvas no banco? Esta ação não pode ser desfeita.`)) return;
-    bancoVersoes = {};
-    salvarBanco();
-    versoesFiltradas = {};
-    atualizarContadorBanco();
-    if (db) { renderLista(); atualizarResumo(); }
+
+    if (total === 0) { mostrarAviso('O banco já está vazio.', 'info'); return; }
+
+    abrirModalExclusao(`${total} versão(ões) salvas`, 'Limpar banco inteiro', () => {
+        bancoVersoes = {};
+        salvarBanco();
+        versoesFiltradas = {};
+        atualizarContadorBanco();
+        if (db) { renderLista(); atualizarResumo(); }
+    });
 }
 
 // ─── Atalho de teclado ────────────────────────────────────────────
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') fecharModal();
+    if (e.key === 'Escape') { fecharModal(); fecharModalBanco(); }
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         if (!document.getElementById('modal-edicao').classList.contains('hidden')) {
             salvarVersaoFiltrada();
+        } else if (!document.getElementById('modal-banco-edicao').classList.contains('hidden')) {
+            salvarEdicaoBancoStandalone();
         }
     }
 });

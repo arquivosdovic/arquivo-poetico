@@ -14,6 +14,7 @@
 
 import { db } from './db.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
+import { escapeHtml, mostrarAviso } from './utils.js';
 
 function listaDeCampo(valor) {
     if (!valor) return [];
@@ -30,7 +31,7 @@ export function popularSelecaoExportacao() {
             ? livros.map(l => `
                 <label class="flex items-center gap-1.5">
                     <input type="checkbox" class="exp-livro-check" value="${l.id}" style="width:auto;margin:0;">
-                    ${l.titulo}
+                    ${escapeHtml(l.titulo)}
                 </label>`).join('')
             : '<span class="text-gray-400 text-xs">Nenhum livro cadastrado.</span>';
     }
@@ -42,7 +43,7 @@ export function popularSelecaoExportacao() {
             ? coletaneas.map(c => `
                 <label class="flex items-center gap-1.5">
                     <input type="checkbox" class="exp-coletanea-check" value="${c.id}" style="width:auto;margin:0;">
-                    ${c.titulo}
+                    ${escapeHtml(c.titulo)}
                 </label>`).join('')
             : '<span class="text-gray-400 text-xs">Nenhuma coletânea cadastrada.</span>';
     }
@@ -309,7 +310,7 @@ export function executarExportacaoSeletiva() {
 export function exportarLivrosCompletos() {
     const ids = idsMarcados('exp-livro-check');
     if (ids.length === 0) {
-        alert('Marque pelo menos um Livro na lista acima antes de baixar.');
+        mostrarAviso('Marque pelo menos um Livro na lista acima antes de baixar.');
         return;
     }
 
@@ -318,7 +319,7 @@ export function exportarLivrosCompletos() {
             .map(id => buildNestingLivro(db, id))
             .filter(Boolean);
 
-        if (livros.length === 0) { alert('Nenhum dos livros marcados foi encontrado.'); return; }
+        if (livros.length === 0) { mostrarAviso('Nenhum dos livros marcados foi encontrado.'); return; }
 
         const saida = { livros };
         const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
@@ -343,13 +344,13 @@ export function exportarLivrosCompletos() {
 // por seleção da Estrutura não inclui — ela só pega Partes/Seções/Poemas pra baixo).
 export function exportarLivroCompleto(livroId) {
     if (!livroId) {
-        alert('Escolha um livro no seletor acima antes de baixar.');
+        mostrarAviso('Escolha um livro no seletor acima antes de baixar.');
         return;
     }
     import('./nesting.js').then(({ buildNestingLivro }) => {
         const livro = buildNestingLivro(db, livroId);
         if (!livro) {
-            alert('Livro não encontrado.');
+            mostrarAviso('Livro não encontrado.');
             return;
         }
 

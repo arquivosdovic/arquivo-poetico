@@ -7,9 +7,14 @@
 import { getElementHierarchy, getPosicaoElemento, fecharEspaco,
          getIrmaosTopoLivro, getIrmaosPorEscopo,
          abrirModalExclusao } from './utils.js';
-import { deletarCapa } from './capas.js';
+import { deletarCapa, exportarTodasCapasBase64, importarCapasBase64 } from './capas.js';
+import { tirarSnapshotSeNecessario } from './autobackup.js';
 
 const DB_KEY = 'arquivoPoetico_v3';
+// Guarda quando o último "Baixar JSON" foi de fato clicado — usado pra
+// mostrar na UI há quanto tempo não se tira um backup manual (item 5
+// da revisão: antes não havia nenhum indicativo disso).
+const LS_KEY_ULTIMO_BACKUP = 'arquivoPoetico_ultimoBackup';
 
 export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     livros: [],
@@ -146,10 +151,13 @@ export function save() {
         setTimeout(() => alert(mensagem), 0);
         return; // não dispara db:saved se não salvou de verdade
     }
+    // Best-effort, em segundo plano — não bloqueia o save() principal
+    // nem precisa ser esperado (ver autobackup.js).
+    tirarSnapshotSeNecessario(db);
     window.dispatchEvent(new CustomEvent('db:saved'));
 }
 
-export function importarDB(novoDb) {
+export async function importarDB(novoDb) {
     db.livros      = novoDb.livros      || [];
     db.partes      = novoDb.partes      || [];
     db.secoes      = novoDb.secoes      || [];
@@ -158,17 +166,51 @@ export function importarDB(novoDb) {
     db.elementos   = novoDb.elementos   || [];
     db.coletaneas  = novoDb.coletaneas  || [];
     db.itensColetanea = novoDb.itensColetanea || [];
+
+    // Se o backup foi gerado com "incluir capas" marcado, ele traz um
+    // _capasBase64 com as imagens embutidas — restaura pro IndexedDB
+    // antes de salvar, senão as capas ficam referenciando IDs vazios.
+    if (novoDb._capasBase64) {
+        await importarCapasBase64(novoDb._capasBase64);
+    }
+
     save();
 }
 
-export function exportarJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+/**
+ * @param {boolean} incluirCapas — se true, embute todas as capas de
+ *   Livro/Parte/Seção como base64 no próprio JSON (deixa o arquivo maior,
+ *   mas o backup fica autocontido — sem isso, um backup restaurado num
+ *   navegador zerado perde todas as imagens, só sobra o texto).
+ */
+export async function exportarJSON(incluirCapas = false) {
+    const payload = incluirCapas
+        ? { ...db, _capasBase64: await exportarTodasCapasBase64() }
+        : db;
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload));
     const a = document.createElement('a');
     a.setAttribute("href", dataStr);
     a.setAttribute("download", "arquivo_poetico_backup.json");
     document.body.appendChild(a);
     a.click();
     a.remove();
+
+    try {
+        localStorage.setItem(LS_KEY_ULTIMO_BACKUP, new Date().toISOString());
+    } catch (err) {
+        // Se nem isso couber, o storage já está no limite — o alert de
+        // quota do save() já vai avisar na próxima gravação normal.
+        console.warn('[db.js] Não foi possível registrar a data do backup:', err);
+    }
+    window.dispatchEvent(new CustomEvent('backup:feito'));
+}
+
+// Usado pela UI (main.js) pra mostrar "Último backup: há X dias".
+// Retorna null se nenhum backup foi baixado ainda nesse navegador.
+export function getUltimoBackup() {
+    const raw = localStorage.getItem(LS_KEY_ULTIMO_BACKUP);
+    return raw ? new Date(raw) : null;
 }
 
 // ─── Exclusão de item ─────────────────────────────────────────

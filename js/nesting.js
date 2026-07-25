@@ -66,3 +66,52 @@ export function getSecoes(paiId, paiTipo, db) {
             return s;
         });
 }
+
+// ─── Desaninhamento (caminho inverso de buildNesting) ─────────
+// Usado por filtrar.html: quando alguém carrega lá um JSON gerado por
+// exportarTudoAninhado/exportarLivroCompleto/exportarLivrosCompletos,
+// essas funções desmontam a árvore Livro → Parte → Seção → Poema/Prosa
+// de volta numa lista plana, com o contexto (livro/parte/seção) já
+// resolvido em cada item.
+//
+// Ficam aqui — junto de buildNesting, que é quem define os nomes de
+// campo dessa árvore (conteudo_partes, conteudo_poemas_diretos etc.)
+// — pra não duplicar esse contrato de formato em dois arquivos que
+// podem sair de sincronia entre si.
+
+function flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut) {
+    const nomeSecao = secao.titulo || null;
+    const contexto = { livro: nomeLivro, parte: nomeParte, secao: nomeSecao };
+    (secao.conteudo_poemas || []).forEach(p => poemasOut.push({ ...p, contexto }));
+    (secao.conteudo_prosas || []).forEach(p => prosasOut.push({ ...p, contexto }));
+}
+
+export function flattenLivroAninhado(livro, poemasOut, prosasOut) {
+    const nomeLivro = livro.siglaOficial || livro.siglaPessoal || livro.titulo || null;
+
+    let contexto = { livro: nomeLivro, parte: null, secao: null };
+    (livro.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto }));
+    (livro.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto }));
+
+    (livro.conteudo_secoes_diretas || []).forEach(secao =>
+        flattenSecaoAninhada(secao, nomeLivro, null, poemasOut, prosasOut));
+
+    (livro.conteudo_partes || []).forEach(parte => {
+        const nomeParte = parte.titulo || null;
+        const contextoParte = { livro: nomeLivro, parte: nomeParte, secao: null };
+        (parte.conteudo_poemas_diretos || []).forEach(p => poemasOut.push({ ...p, contexto: contextoParte }));
+        (parte.conteudo_prosas_diretas || []).forEach(p => prosasOut.push({ ...p, contexto: contextoParte }));
+        (parte.conteudo_secoes || []).forEach(secao =>
+            flattenSecaoAninhada(secao, nomeLivro, nomeParte, poemasOut, prosasOut));
+    });
+}
+
+// Detecta se um objeto "parece" um Livro aninhado (tem ao menos uma das
+// chaves de conteúdo que só existem nessa árvore, geradas por buildNesting).
+export function pareceLivroAninhado(obj) {
+    return !!obj && (
+        'conteudo_partes' in obj ||
+        'conteudo_poemas_diretos' in obj ||
+        'conteudo_secoes_diretas' in obj
+    );
+}

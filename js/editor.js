@@ -4,7 +4,7 @@
 // ============================================================
 
 import { db } from './db.js';
-import { extrairSinalizacoesUnicas, extrairPessoasUnicas } from './utils.js';
+import { extrairSinalizacoesUnicas, extrairPessoasUnicas, escapeHtml } from './utils.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -72,7 +72,7 @@ export function atualizarDatalist() {
     const datalist = document.getElementById('sugestoes-sinais');
     if (datalist) {
         datalist.innerHTML = extrairSinalizacoesUnicas(db.poemas)
-            .map(tag => `<option value="${tag}">`)
+            .map(tag => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     atualizarDatalistPessoas();
@@ -100,8 +100,8 @@ export function renderizarTags() {
 
     container.innerHTML = tagsAtuais.map(t => `
         <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${t}
-            <button type="button" onclick="removerTag('${t}')" class="hover:text-red-200 font-bold ml-1">×</button>
+            ${escapeHtml(t)}
+            <button type="button" data-valor="${escapeHtml(t)}" onclick="removerTag(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
         </span>`).join('');
 
     if (inputOculto) inputOculto.value = tagsAtuais.join(', ');
@@ -127,7 +127,7 @@ export function atualizarDatalistPessoas() {
     const datalist = document.getElementById('sugestoes-pessoas');
     if (!datalist) return;
     datalist.innerHTML = extrairPessoasUnicas(db.poemas)
-        .map(nome => `<option value="${nome}">`)
+        .map(nome => `<option value="${escapeHtml(nome)}">`)
         .join('');
 }
 
@@ -153,8 +153,8 @@ export function renderizarPessoas() {
 
     container.innerHTML = pessoasAtuais.map(nome => `
         <span class="bg-rose-500 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${nome}
-            <button type="button" onclick="removerPessoa('${nome}')" class="hover:text-red-200 font-bold ml-1">×</button>
+            ${escapeHtml(nome)}
+            <button type="button" data-valor="${escapeHtml(nome)}" onclick="removerPessoa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
         </span>`).join('');
 
     if (inputOculto) inputOculto.value = pessoasAtuais.join(', ');
@@ -181,13 +181,13 @@ export function atualizarDatalistProsa() {
     const datalistSinais = document.getElementById('sugestoes-sinais-prosa');
     if (datalistSinais) {
         datalistSinais.innerHTML = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas||[])])
-            .map(tag => `<option value="${tag}">`)
+            .map(tag => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     const datalistPessoas = document.getElementById('sugestoes-pessoas-prosa');
     if (datalistPessoas) {
         datalistPessoas.innerHTML = extrairPessoasUnicas([...db.poemas, ...(db.prosas||[])])
-            .map(nome => `<option value="${nome}">`)
+            .map(nome => `<option value="${escapeHtml(nome)}">`)
             .join('');
     }
 }
@@ -213,8 +213,8 @@ export function renderizarTagsProsa() {
     if (!container) return;
     container.innerHTML = tagsProsa.map(t => `
         <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${t}
-            <button type="button" onclick="removerTagProsa('${t}')" class="hover:text-red-200 font-bold ml-1">×</button>
+            ${escapeHtml(t)}
+            <button type="button" data-valor="${escapeHtml(t)}" onclick="removerTagProsa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
         </span>`).join('');
     if (inputOculto) inputOculto.value = tagsProsa.join(', ');
 }
@@ -252,8 +252,8 @@ export function renderizarPessoasProsa() {
     if (!container) return;
     container.innerHTML = pessoasProsa.map(nome => `
         <span class="bg-rose-500 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${nome}
-            <button type="button" onclick="removerPessoaProsa('${nome}')" class="hover:text-red-200 font-bold ml-1">×</button>
+            ${escapeHtml(nome)}
+            <button type="button" data-valor="${escapeHtml(nome)}" onclick="removerPessoaProsa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
         </span>`).join('');
     if (inputOculto) inputOculto.value = pessoasProsa.join(', ');
 }

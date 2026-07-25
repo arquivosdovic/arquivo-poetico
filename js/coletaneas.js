@@ -4,7 +4,7 @@
 // ============================================================
 
 import { db, save }        from './db.js';
-import { toBase64, abrirModalExclusao } from './utils.js';
+import { toBase64, abrirModalExclusao, gerarId, escapeHtml } from './utils.js';
 import { toggleModal, garantirModal } from './ui.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -67,7 +67,7 @@ function origemLabel(item) {
         contexto = livro?.siglaOficial || livro?.titulo || '';
     }
 
-    return contexto || 'origem desconhecida';
+    return escapeHtml(contexto) || 'origem desconhecida';
 }
 
 // ─── Renderização principal ───────────────────────────────────
@@ -110,7 +110,7 @@ function renderListaColetaneas() {
                     margin-bottom:8px;">
             <div style="font-size:13px; font-weight:500;
                         color:${ativa ? '#0C447C' : 'var(--color-text-primary)'};">
-                ${col.titulo}
+                ${escapeHtml(col.titulo)}
             </div>
             <div style="font-size:10px; margin-top:2px;
                         color:${ativa ? '#185FA5' : 'var(--color-text-tertiary)'};">
@@ -141,7 +141,7 @@ function renderEditorColetanea(livroId) {
     editor.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
             <div>
-                <div style="font-size:16px; font-weight:500; color:var(--color-text-primary);">${col.titulo}</div>
+                <div style="font-size:16px; font-weight:500; color:var(--color-text-primary);">${escapeHtml(col.titulo)}</div>
                 <div style="font-size:11px; color:var(--color-text-tertiary); margin-top:2px;">Coletânea · SEQ ${col.sequencia || '—'}</div>
             </div>
             <button onclick="prepararNovaParte(${livroId})"
@@ -162,7 +162,7 @@ function renderParteColetanea(parte) {
         ? (() => {
             const original = db.partes.find(x => x.id == parte.refId);
             const livro    = original ? db.livros.find(l => l.id == original.livroId) : null;
-            return `inspirada em: ${original?.titulo || '?'} · ${livro?.siglaOficial || livro?.titulo || '?'}`;
+            return `inspirada em: ${escapeHtml(original?.titulo) || '?'} · ${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'}`;
           })()
         : 'parte nova · exclusiva desta coletânea';
 
@@ -180,7 +180,7 @@ function renderParteColetanea(parte) {
                     <span style="font-size:10px; color:var(--color-text-tertiary); transition:transform 0.15s;"
                           class="col-parte-chevron">▼</span>
                     <div>
-                        <div style="font-size:12px; font-weight:500; color:var(--color-text-primary);">${parte.titulo}</div>
+                        <div style="font-size:12px; font-weight:500; color:var(--color-text-primary);">${escapeHtml(parte.titulo)}</div>
                         <div style="font-size:10px; color:var(--color-text-tertiary); margin-top:1px;">
                             ${refLabel} · ${totalItens} iten${totalItens !== 1 ? 's' : ''}
                         </div>
@@ -228,7 +228,7 @@ function renderItemLinha(item, idx, total) {
                      text-transform:uppercase; flex-shrink:0; ${badgeStyle}">${tipoLabel}</span>
         <span style="font-size:12px; color:var(--color-text-primary); flex:1; min-width:0;
                      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-            ${item.titulo}
+            ${escapeHtml(item.titulo)}
             ${temOverride ? '<span style="font-size:9px; color:#BA7517; margin-left:4px;">[versão alternativa]</span>' : ''}
         </span>
         <span style="font-size:10px; color:var(--color-text-tertiary); flex-shrink:0;">${origem}</span>
@@ -316,7 +316,7 @@ function preencherSelectPartes(selectId) {
     sel.innerHTML = '<option value="">— Parte nova (sem referência) —</option>' +
         partesOriginais.map(p => {
             const livro = db.livros.find(l => l.id == p.livroId);
-            return `<option value="${p.id}">${livro?.siglaOficial || livro?.titulo || '?'} · ${p.titulo}</option>`;
+            return `<option value="${p.id}">${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'} · ${escapeHtml(p.titulo)}</option>`;
         }).join('');
 }
 
@@ -327,7 +327,7 @@ export function initFormColParte() {
         e.preventDefault();
         const idInput = document.getElementById('cp-edit-id').value;
         const livroId = document.getElementById('cp-livro-id').value;
-        const id      = idInput ? parseInt(idInput) : Date.now();
+        const id      = idInput ? parseInt(idInput) : gerarId();
         const refIdRaw = document.getElementById('cp-ref').value;
 
         const capaFile = document.getElementById('cp-capa').files[0];
@@ -457,7 +457,7 @@ function preencherSelectItens(tipo) {
     sel.innerHTML = '<option value="">— Inédito (sem referência) —</option>' +
         colecao.map(item => {
             const origem = origemLabel({ refId: item.id, refTipo: tipo });
-            return `<option value="${item.id}">${item.titulo} · ${origem}</option>`;
+            return `<option value="${item.id}">${escapeHtml(item.titulo)} · ${origem}</option>`;
         }).join('');
 }
 
@@ -469,7 +469,7 @@ export function initFormColItem() {
         if (!db.itensColetanea) db.itensColetanea = [];
 
         const idInput  = document.getElementById('ci-edit-id').value;
-        const id       = idInput ? parseInt(idInput) : Date.now();
+        const id       = idInput ? parseInt(idInput) : gerarId();
         const parteId  = parseInt(document.getElementById('ci-parte-id').value);
         const refIdRaw = document.getElementById('ci-ref-id').value;
         const refTipo  = document.getElementById('ci-ref-tipo').value;

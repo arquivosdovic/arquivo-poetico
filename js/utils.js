@@ -3,6 +3,52 @@
 // Importado por: db.js, render.js, forms.js
 // ============================================================
 
+// ─── Geração de ID único ────────────────────────────────────────
+// Antes, cada módulo gerava IDs com `Date.now()` de forma independente.
+// Como Date.now() só tem resolução de 1ms, dois itens criados no mesmo
+// milissegundo (ex.: duplo clique, criação em lote) recebiam o MESMO id,
+// colidindo silenciosamente. gerarId() mantém IDs numéricos (pra não
+// quebrar comparações existentes como `a.id - b.id` nas ordenações de
+// db.js), mas garante que cada chamada retorna um valor estritamente
+// maior que o anterior, mesmo em rajada.
+let _ultimoIdEmitido = 0;
+
+export function gerarId() {
+    const agora = Date.now();
+    _ultimoIdEmitido = agora > _ultimoIdEmitido ? agora : _ultimoIdEmitido + 1;
+    return _ultimoIdEmitido;
+}
+
+// ─── Escaping de HTML ───────────────────────────────────────────
+// Usado por render.js em todo campo de texto livre (título, notas,
+// tags, pessoas...) antes de injetar via innerHTML/template string.
+// NÃO deve ser usado no campo `texto` de Poema/Prosa/Elemento — esse
+// campo guarda HTML de propósito (o editor de formatação em editor.js
+// insere <div style="..."> pra negrito/itálico/cor), então escapá-lo
+// quebraria a formatação do texto.
+export function escapeHtml(valor) {
+    if (valor === null || valor === undefined) return '';
+    return String(valor)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+// ─── Debounce ────────────────────────────────────────────────
+// Atrasa a chamada de fn até `espera` ms depois da última invocação.
+// Usado nos campos de busca (Poemas/Prosas): cada renderPoemas()/
+// renderProsas() reconstrói a lista inteira via innerHTML, então sem
+// isso cada tecla digitada dispara um render completo.
+export function debounce(fn, espera = 200) {
+    let timer = null;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), espera);
+    };
+}
+
 export const sortBySeq = (lista) => {
     return [...lista].sort((a, b) => {
         const seqA = parseInt(a.sequencia) || 9999;
@@ -157,15 +203,30 @@ export function getPosicaoElemento(el, db) {
     return [livroSeq, posParte, posSecao];
 }
 
-// ─── Modal de confirmação de exclusão ────────────────────────
-// Usado por db.js (deleteItem) e coletaneas.js (deletarParteColetanea,
-// deletarItemColetanea). Vive aqui por ser uma utilidade genérica de UI
+// ─── Modal de confirmação genérico ────────────────────────────
+// Base de qualquer ação que precise de "tem certeza?" antes de rodar:
+// exclusões (abrirModalExclusao abaixo) e ações em massa que afetam
+// vários itens de uma vez (ver aplicarPessoaEmMassa etc. em
+// render-listas.js). Vive aqui por ser uma utilidade genérica de UI
 // sem dependência de estado interno — qualquer módulo pode importar.
 //
 // Uso:
-//   abrirModalExclusao('Título do item', 'Tipo', () => { /* executa exclusão */ });
+//   abrirModalConfirmacao({
+//       titulo: 'Título do item',
+//       rotulo: 'Tipo',
+//       mensagem: 'Descrição do que vai acontecer.',
+//       textoConfirmar: 'Confirmar',
+//       corConfirmar: '#dc2626',
+//       onConfirmar: () => { /* executa a ação */ }
+//   });
 
-export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
+export function abrirModalConfirmacao({
+    titulo, rotulo,
+    mensagem = 'Esta ação é permanente e não pode ser desfeita.',
+    textoConfirmar = 'Confirmar',
+    corConfirmar = '#dc2626',
+    onConfirmar
+}) {
     let overlay = document.getElementById('modal-confirmar-exclusao');
     if (!overlay) {
         overlay = document.createElement('div');
@@ -192,9 +253,8 @@ export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
             <h3 style="margin:0 0 20px; font-size:16px; font-weight:700;
                        color:#111827; line-height:1.4; word-break:break-word;"
                 id="excl-titulo"></h3>
-            <p style="margin:0 0 24px; font-size:13px; color:#6b7280;">
-                Esta ação é permanente e não pode ser desfeita.
-            </p>
+            <p style="margin:0 0 24px; font-size:13px; color:#6b7280;"
+               id="excl-mensagem"></p>
             <div style="display:flex; gap:10px; justify-content:flex-end;">
                 <button id="excl-cancelar"
                     style="padding:8px 18px; border-radius:8px; border:1px solid #e5e7eb;
@@ -204,9 +264,8 @@ export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
                 </button>
                 <button id="excl-confirmar"
                     style="padding:8px 18px; border-radius:8px; border:none;
-                           background:#dc2626; color:#fff; font-size:13px; font-weight:600;
+                           color:#fff; font-size:13px; font-weight:600;
                            cursor:pointer;">
-                    Excluir
                 </button>
             </div>
         `;
@@ -222,14 +281,23 @@ export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
 
     document.getElementById('excl-rotulo').textContent = rotulo;
     document.getElementById('excl-titulo').textContent = titulo;
+    document.getElementById('excl-mensagem').textContent = mensagem;
 
     const btnCancelar  = document.getElementById('excl-cancelar');
     const btnConfirmar = document.getElementById('excl-confirmar');
     btnCancelar.onclick  = _fecharModalExclusao;
     btnConfirmar.onclick = () => { _fecharModalExclusao(); onConfirmar(); };
+    btnConfirmar.textContent = textoConfirmar;
+    btnConfirmar.style.background = corConfirmar;
 
     overlay.style.display = 'flex';
     setTimeout(() => btnCancelar.focus(), 0);
+}
+
+// Atalho pro caso mais comum (exclusão permanente) — mesma assinatura
+// de sempre, quem já chama abrirModalExclusao não precisa mudar nada.
+export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
+    abrirModalConfirmacao({ titulo, rotulo, textoConfirmar: 'Excluir', corConfirmar: '#dc2626', onConfirmar });
 }
 
 function _fecharModalExclusao() {
@@ -241,6 +309,69 @@ function _modalExclusaoTeclado(e) {
     const overlay = document.getElementById('modal-confirmar-exclusao');
     if (!overlay || overlay.style.display === 'none') return;
     if (e.key === 'Escape') _fecharModalExclusao();
+}
+
+// ─── Aviso não-bloqueante (toast) ──────────────────────────────
+// Substitui os `alert()` nativos espalhados pelo app pra mensagens de
+// validação/erro simples ("selecione um vínculo", "nenhum item
+// selecionado" etc.) — o alert() nativo trava a página inteira com uma
+// caixa cinza do sistema operacional, destoando do resto da UI, que já
+// usa modais estilizados (ver abrirModalExclusao acima) pra tudo que é
+// realmente bloqueante. Um toast desaparece sozinho e não trava nada.
+//
+// Uso: mostrarAviso('Selecione um vínculo.') ou
+//      mostrarAviso('Backup salvo!', 'sucesso')
+
+const _CORES_AVISO = {
+    erro:    { bg: '#dc2626', texto: '#fff' },
+    sucesso: { bg: '#059669', texto: '#fff' },
+    info:    { bg: '#1f2937', texto: '#fff' }
+};
+
+export function mostrarAviso(mensagem, tipo = 'erro') {
+    let container = document.getElementById('avisos-toast');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'avisos-toast';
+        container.style.cssText = `
+            position:fixed; bottom:20px; right:20px; z-index:10001;
+            display:flex; flex-direction:column; gap:8px;
+            font-family:sans-serif; pointer-events:none;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const cor = _CORES_AVISO[tipo] || _CORES_AVISO.erro;
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        background:${cor.bg}; color:${cor.texto};
+        padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25); max-width:340px;
+        opacity:0; transform:translateY(8px);
+        transition:opacity .18s ease-out, transform .18s ease-out;
+        pointer-events:auto; cursor:pointer;
+    `;
+    toast.textContent = mensagem;
+    toast.title = 'Clique pra fechar';
+    toast.onclick = () => _removerToast(toast);
+    container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+
+    // Erros ficam mais tempo na tela — costumam pedir uma ação da pessoa,
+    // sucesso/info são só uma confirmação rápida.
+    const duracao = tipo === 'erro' ? 5000 : 3000;
+    setTimeout(() => _removerToast(toast), duracao);
+}
+
+function _removerToast(toast) {
+    if (!toast.isConnected) return;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    setTimeout(() => toast.remove(), 180);
 }
 
 // Recebe o array db.livros e retorna todas as "Fases de Vida" já usadas,

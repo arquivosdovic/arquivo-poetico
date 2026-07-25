@@ -20,6 +20,8 @@
 //   revogarURL(url)   → void                   libera object URL da memória
 // ============================================================
 
+import { mostrarAviso } from './utils.js';
+
 const DB_NAME    = 'arquivoPoetico_capas';
 const DB_VERSION = 1;
 const STORE      = 'capas';
@@ -113,7 +115,7 @@ export async function salvarCapa(file, idExistente = null) {
     try {
         blob = await processarImagem(file);
     } catch (err) {
-        alert(`Erro ao processar capa: ${err.message}`);
+        mostrarAviso(`Erro ao processar capa: ${err.message}`);
         return null;
     }
 
@@ -174,4 +176,78 @@ export async function deletarCapa(id) {
  */
 export function revogarURL(url) {
     if (url) URL.revokeObjectURL(url);
+}
+
+// ─── Exportação/importação completa (com imagens) ─────────────
+// Usado pelo "Baixar JSON" quando a pessoa marca "incluir capas" — e pelos
+// snapshots automáticos (autobackup.js). Só entra em ação nesses dois
+// pontos; o dia a dia (salvarCapa/lerCapa) nunca toca nisso.
+
+function blobParaBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result); // já vem como data URL
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function base64ParaBlob(dataUrl) {
+    // fetch() aceita data: URLs nativamente — mais simples que decodificar
+    // base64 na mão, e funciona em qualquer navegador atual.
+    const resposta = await fetch(dataUrl);
+    return resposta.blob();
+}
+
+/**
+ * Lê todas as capas do IndexedDB e devolve como { id: dataURLBase64 }.
+ * Usado só na hora de gerar um backup "completo" — o app não guarda
+ * essa cópia em nenhum lugar, ela só existe dentro do arquivo baixado.
+ * @returns {Promise<Object<string,string>>}
+ */
+export async function exportarTodasCapasBase64() {
+    const idb = await abrirDB();
+    const registros = await new Promise((resolve, reject) => {
+        const tx  = idb.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).getAll();
+        req.onsuccess = (e) => resolve(e.target.result || []);
+        req.onerror   = (e) => reject(e.target.error);
+    });
+
+    const mapa = {};
+    for (const registro of registros) {
+        try {
+            mapa[registro.id] = await blobParaBase64(registro.blob);
+        } catch (err) {
+            // Uma capa corrompida não deve derrubar o backup inteiro —
+            // só fica de fora e segue o baile.
+            console.warn(`[capas.js] Não foi possível converter a capa ${registro.id} para base64:`, err);
+        }
+    }
+    return mapa;
+}
+
+/**
+ * Restaura capas de um mapa { id: dataURLBase64 } (gerado por
+ * exportarTodasCapasBase64) de volta pro IndexedDB. Usado ao importar
+ * um backup que tem o campo _capasBase64.
+ * @param {Object<string,string>} mapa
+ */
+export async function importarCapasBase64(mapa) {
+    if (!mapa || typeof mapa !== 'object') return;
+    const idb = await abrirDB();
+
+    for (const [id, dataUrl] of Object.entries(mapa)) {
+        try {
+            const blob = await base64ParaBlob(dataUrl);
+            await new Promise((resolve, reject) => {
+                const tx  = idb.transaction(STORE, 'readwrite');
+                const req = tx.objectStore(STORE).put({ id, blob });
+                req.onsuccess = resolve;
+                req.onerror   = (e) => reject(e.target.error);
+            });
+        } catch (err) {
+            console.warn(`[capas.js] Não foi possível restaurar a capa ${id}:`, err);
+        }
+    }
 }

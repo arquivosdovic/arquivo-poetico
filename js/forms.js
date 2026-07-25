@@ -6,7 +6,7 @@ import { db, save }           from './db.js';
 import { toBase64, reordenarPosicao, fecharEspaco,
          getIrmaosTopoLivro, getIrmaosPorEscopo,
          lerDataParcial, preencherDataParcial,
-         seqOuNull } from './utils.js';
+         seqOuNull, gerarId, escapeHtml, mostrarAviso } from './utils.js';
 import { salvarCapa, deletarCapa } from './capas.js';
 import { getColetaneasDeItem } from './coletaneas.js';
 import { toggleModal, garantirModal,
@@ -33,7 +33,7 @@ function renderColetaneasInfo(containerId, refTipo, refId) {
     const lista = getColetaneasDeItem(refTipo, refId);
     el.innerHTML = lista.length
         ? `<div class="text-[11px] bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg px-3 py-2 mt-1">
-              📚 Aparece em: ${lista.map(c => `<strong>${c.coletaneaTitulo}</strong> › ${c.parteTitulo}`).join(' &nbsp;·&nbsp; ')}
+              📚 Aparece em: ${lista.map(c => `<strong>${escapeHtml(c.coletaneaTitulo)}</strong> › ${escapeHtml(c.parteTitulo)}`).join(' &nbsp;·&nbsp; ')}
            </div>`
         : '';
 }
@@ -54,7 +54,7 @@ export function initFormLivro() {
         const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
 
         const dados = {
-            id: id ? parseInt(id) : Date.now(),
+            id: id ? parseInt(id) : gerarId(),
             titulo:       document.getElementById('l-titulo').value,
             sequencia:    seqOuNull(document.getElementById('l-sequencia').value),
             siglaOficial: document.getElementById('l-sigla-oficial').value,
@@ -123,7 +123,7 @@ export function initFormParte() {
         const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
 
         const dados = {
-            id: id ? parseInt(id) : Date.now(),
+            id: id ? parseInt(id) : gerarId(),
             titulo:    document.getElementById('part-titulo').value,
             livroId:   document.getElementById('part-livro').value,
             sequencia: seqOuNull(document.getElementById('part-sequencia').value),
@@ -178,10 +178,10 @@ export function initFormSecao() {
         e.preventDefault();
         const idInput = document.getElementById('sec-edit-id').value;
         const vinculo = document.getElementById('sec-vinculo').value;
-        if (!vinculo) return alert('Selecione um vínculo para a seção!');
+        if (!vinculo) return mostrarAviso('Selecione um vínculo para a seção!');
 
         const [tipo, idPai] = vinculo.split(':');
-        const id        = idInput ? parseInt(idInput) : Date.now();
+        const id        = idInput ? parseInt(idInput) : gerarId();
         const capaFile  = document.getElementById('sec-capa').files[0];
         const capaAtual = idInput ? db.secoes.find(x => x.id == id)?.capa : null;
         const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
@@ -245,7 +245,7 @@ export function initFormPoema() {
         e.preventDefault();
 
         const idInput = document.getElementById('p-edit-id').value;
-        const id      = idInput ? parseInt(idInput) : Date.now();
+        const id      = idInput ? parseInt(idInput) : gerarId();
         const destino = document.getElementById('p-destino').value;
 
         let paiTipo = null, paiId = null;
@@ -350,7 +350,7 @@ export function initFormProsa() {
         e.preventDefault();
 
         const idInput = document.getElementById('pr-edit-id').value;
-        const id      = idInput ? parseInt(idInput) : Date.now();
+        const id      = idInput ? parseInt(idInput) : gerarId();
         const destino = document.getElementById('pr-destino').value;
 
         let paiTipo = null, paiId = null;
@@ -444,9 +444,9 @@ export function initFormElemento() {
         e.preventDefault();
 
         const idInput = document.getElementById('el-edit-id').value;
-        const id      = idInput ? parseInt(idInput) : Date.now();
+        const id      = idInput ? parseInt(idInput) : gerarId();
         const vinculo = document.getElementById('el-vinculo').value;
-        if (!vinculo) return alert('Selecione um vínculo.');
+        if (!vinculo) return mostrarAviso('Selecione um vínculo.');
 
         const [tipoPai, idPaiStr] = vinculo.split(':');
         const idPai = parseInt(idPaiStr);

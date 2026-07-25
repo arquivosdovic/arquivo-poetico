@@ -4,6 +4,7 @@
 // ============================================================
 
 import { db } from './db.js';
+import { escapeHtml } from './utils.js';
 
 const STOPWORDS = new Set([
     'a','o','as','os','um','uma','uns','umas','de','do','da','dos','das','em','no','na','nos','nas',
@@ -248,7 +249,7 @@ function renderResumo() {
 
     container.innerHTML = cartoes.map(([rotulo, valor]) => `
         <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <div class="text-2xl font-black text-blue-700">${valor}</div>
+            <div class="text-2xl font-black text-blue-700">${escapeHtml(valor)}</div>
             <div class="text-[10px] uppercase text-gray-400 font-bold mt-1">${rotulo}</div>
         </div>`).join('');
 }
@@ -259,7 +260,7 @@ function popularSeletorLivroPalavras() {
     const valorAtual = sel.value;
     const livrosComuns = db.livros.filter(l => l.tipo !== 'Coletânea');
     const coletaneas   = db.livros.filter(l => l.tipo === 'Coletânea');
-    const label = l => l.siglaOficial || l.siglaPessoal || l.titulo;
+    const label = l => escapeHtml(l.siglaOficial || l.siglaPessoal || l.titulo);
     sel.innerHTML = '<option value="">-- Todo o acervo --</option>' +
         (livrosComuns.length
             ? '<optgroup label="Livros">' +
@@ -283,7 +284,7 @@ function renderListaPalavras() {
     container.innerHTML = palavras.length
         ? palavras.map(([palavra, n], i) => `
             <div class="flex justify-between items-center px-2 py-1 rounded ${i < 3 ? 'bg-blue-50' : ''}">
-                <span class="text-gray-700">${palavra}</span>
+                <span class="text-gray-700">${escapeHtml(palavra)}</span>
                 <span class="text-gray-400 font-mono text-xs">${n}</span>
             </div>`).join('')
         : '<p class="text-gray-400 col-span-full">Sem texto suficiente pra analisar ainda.</p>';

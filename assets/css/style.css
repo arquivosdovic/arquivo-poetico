@@ -32,6 +32,17 @@ input, select, textarea {
     margin-bottom: 1rem;
 }
 
+/* input[type=search] tem aparência nativa própria (pill arredondado) em
+   Safari/Chrome — reseta pra herdar o mesmo visual dos outros campos. */
+input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+    cursor: pointer;
+}
+
 /* --- Grid de Listagem (Livros e Partes) --- */
 #lista-livros, #lista-partes, #lista-secoes {
     display: grid;

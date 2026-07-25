@@ -83,8 +83,18 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 │   ├── modais.js             → Carregamento lazy dos modais via fetch, com cache
 │   ├── ui.js                 → Abas, dropdowns, auto-preenchimento (reexporta
 │   │                           toggleModal/garantirModal de modais.js)
-│   ├── render.js             → Renderização das listas/tabelas; carrega capas
-│   │                           de forma assíncrona e exibe lightbox navegável ao clicar
+│   ├── render.js             → Orquestrador: chama, em ordem, os renderers
+│   │                           de cada aba a cada 'db:saved' (ver os 3
+│   │                           módulos abaixo pra lógica de cada um)
+│   ├── render-listas.js      → Renderização de Livros/Partes/Seções/
+│   │                           Poemas (+ seleção múltipla)/Prosas/Elementos
+│   ├── render-estrutura.js   → Árvore da aba "Estrutura": seleção em
+│   │                           cascata, mover ▲▼, mover entre níveis
+│   ├── render-lightbox.js    → Carrega capas do IndexedDB de forma
+│   │                           assíncrona e exibe lightbox navegável
+│   ├── autobackup.js         → Snapshots automáticos do acervo no
+│   │                           IndexedDB (rede de segurança além do
+│   │                           "Baixar JSON" manual — não substitui)
 │   ├── forms.js              → Submit/edição de Livro, Parte, Seção, Poema,
 │   │                           Prosa, Elemento
 │   ├── editor.js             → Toolbar de formatação do texto + tags/pessoas
@@ -95,7 +105,9 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
 │   └── utils.js              → Funções puras sem dependências internas;
-│                               inclui modal de confirmação de exclusão
+│                               inclui modal de confirmação de exclusão,
+│                               geração de ID (gerarId) e escaping de HTML
+│                               (escapeHtml)
 │
 ├── modais/                    → HTML de cada modal, carregado sob demanda
 │   ├── modal-livro.html
