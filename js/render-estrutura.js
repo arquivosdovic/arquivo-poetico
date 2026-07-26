@@ -185,15 +185,15 @@ function renderNoEstrutura({ tipo, dados }, nivel) {
     // diretamente no Livro).
     const botaoMoverNivel = tipo !== 'parte'
         ? `<button onclick="event.stopPropagation(); event.preventDefault(); abrirModalMoverNivel('${tipo}', ${dados.id})"
-                class="text-gray-400 hover:text-emerald-600 px-1 text-xs" title="Mover para outro nível">↪</button>`
+                class="text-gray-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 px-1 text-xs" title="Mover para outro nível">↪</button>`
         : '';
 
     const botoesMover = `
         <span class="ml-auto flex gap-1">
             <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'up')"
-                class="text-gray-400 hover:text-blue-600 px-1 text-xs" title="Subir">▲</button>
+                class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Subir">▲</button>
             <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'down')"
-                class="text-gray-400 hover:text-blue-600 px-1 text-xs" title="Descer">▼</button>
+                class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Descer">▼</button>
             ${botaoMoverNivel}
         </span>`;
 
@@ -206,32 +206,32 @@ function renderNoEstrutura({ tipo, dados }, nivel) {
 
         const conteudoLinha = `
             ${checkbox}
-            <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
+            <span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
             <span class="icone-details">${iconeAberto}</span>
             <span class="${COR_TIPO[tipo] || ''}">${titulo}</span>
-            <span class="text-[9px] uppercase text-gray-300 ml-2">${tipo}</span>
+            <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-2">${tipo}</span>
             ${botoesMover}`;
 
         return `
         <details open data-icone-aberto="${iconeAberto}" data-icone-fechado="${iconeFechado}"
             data-key="${tipo}-${dados.id}"
-            style="margin-left:${nivel * 18}px" class="border-b border-gray-50 details-icone">
+            style="margin-left:${nivel * 18}px" class="border-b border-gray-50 dark:border-slate-800 details-icone">
             <summary class="py-1.5 flex items-center gap-2 text-sm cursor-pointer list-none">${conteudoLinha}</summary>
-            <div>${filhosHtml || '<p class="text-[10px] text-gray-300 italic pl-8 pb-1">(vazio)</p>'}</div>
+            <div>${filhosHtml || '<p class="text-[10px] text-gray-300 dark:text-slate-600 italic pl-8 pb-1">(vazio)</p>'}</div>
         </details>`;
     }
 
     // Poema, Prosa, Elemento: linha simples, sem filhos
     const conteudoLinha = `
         ${checkbox}
-        <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
+        <span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
         <span>${ICONE_TIPO[tipo] || '•'}</span>
         <span class="${COR_TIPO[tipo] || ''}">${titulo}</span>
-        <span class="text-[9px] uppercase text-gray-300 ml-2">${tipo}</span>
+        <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-2">${tipo}</span>
         ${botoesMover}`;
 
     return `
-        <div style="margin-left:${nivel * 18}px" class="py-1.5 flex items-center gap-2 text-sm border-b border-gray-50">
+        <div style="margin-left:${nivel * 18}px" class="py-1.5 flex items-center gap-2 text-sm border-b border-gray-50 dark:border-slate-800">
             ${conteudoLinha}
         </div>`;
 }
@@ -464,13 +464,13 @@ export function renderEstrutura() {
     if (!container) return;
 
     if (!livroEstruturaAtual) {
-        container.innerHTML = '<p class="text-gray-400 text-sm">Escolha um livro acima pra ver a árvore completa.</p>';
+        container.innerHTML = '<p class="text-gray-400 dark:text-slate-500 text-sm">Escolha um livro acima pra ver a árvore completa.</p>';
         return;
     }
 
     const topo = getTopoComTipos(livroEstruturaAtual);
     if (topo.length === 0) {
-        container.innerHTML = '<p class="text-gray-400 text-sm">Esse livro ainda não tem conteúdo vinculado.</p>';
+        container.innerHTML = '<p class="text-gray-400 dark:text-slate-500 text-sm">Esse livro ainda não tem conteúdo vinculado.</p>';
         return;
     }
 

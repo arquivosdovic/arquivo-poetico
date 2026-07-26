@@ -33,7 +33,7 @@ export function popularSelecaoExportacao() {
                     <input type="checkbox" class="exp-livro-check" value="${l.id}" style="width:auto;margin:0;">
                     ${escapeHtml(l.titulo)}
                 </label>`).join('')
-            : '<span class="text-gray-400 text-xs">Nenhum livro cadastrado.</span>';
+            : '<span class="text-gray-400 dark:text-slate-500 text-xs">Nenhum livro cadastrado.</span>';
     }
 
     const coletaneasContainer = document.getElementById('exp-coletaneas-checks');
@@ -45,7 +45,7 @@ export function popularSelecaoExportacao() {
                     <input type="checkbox" class="exp-coletanea-check" value="${c.id}" style="width:auto;margin:0;">
                     ${escapeHtml(c.titulo)}
                 </label>`).join('')
-            : '<span class="text-gray-400 text-xs">Nenhuma coletânea cadastrada.</span>';
+            : '<span class="text-gray-400 dark:text-slate-500 text-xs">Nenhuma coletânea cadastrada.</span>';
     }
 }
 

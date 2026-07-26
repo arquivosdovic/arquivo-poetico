@@ -36,6 +36,105 @@ export function escapeHtml(valor) {
         .replaceAll("'", '&#39;');
 }
 
+// ─── Sanitização do campo `texto` (HTML cru intencional) ────────
+// O campo `texto` de Poema/Prosa/Elemento guarda HTML de propósito
+// (ver comentário de escapeHtml acima) — mas "guardar HTML cru" não
+// pode significar "confiar cegamente no HTML cru", principalmente
+// porque esse campo entra no app por importarJSON() sem qualquer
+// validação (ver db.js → importarDB). Um backup .json editado à mão,
+// corrompido ou vindo de outra máquina pode trazer um <script> ou
+// onerror= disfarçado de formatação.
+//
+// sanitizarTextoRico() roda esse HTML por uma allowlist (DOMPurify).
+// A allowlist NÃO é só o que applyStyle() (editor.js) gera hoje — foi
+// conferida contra o acervo real de poemas/prosas (anos de HTML colado
+// de fontes diversas: Word, versões antigas do editor etc.), então
+// cobre também <p>, <span> soltos e propriedades como line-height,
+// page-break-after, background-color, padding, border-radius,
+// max-width, white-space, font-weight, que aparecem no acervo mas que
+// o editor atual não gera sozinho.
+//
+// IMPORTANTE: essa função só deve ser chamada no momento de
+// RENDERIZAR (innerHTML), nunca ao importar/salvar. Ver nota extensa
+// sobre "HTML malformado" logo abaixo — sanitizar e sobrescrever o
+// dado salvo pode apagar conteúdo legítimo silenciosamente.
+//
+// Depende do DOMPurify vendorizado em assets/js/purify.min.js
+// (carregado antes de js/main.js no index.html).
+const ALLOWLIST_TEXTO_RICO = {
+    ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'u'],
+    ALLOWED_ATTR: ['style'],
+    ALLOWED_STYLES: [
+        'color', 'font-family', 'font-size', 'text-align', 'display',
+        'page-break-after', 'background-color', 'padding', 'border-radius',
+        'line-height', 'max-width', 'white-space', 'font-weight',
+    ],
+};
+// Nenhuma dessas propriedades aceita url()/expression() de verdade
+// (background-color só aceita cor, não é o mesmo que `background`),
+// mas barramos mesmo assim por segurança extra.
+const VALOR_DE_ESTILO_PERIGOSO = /url\s*\(|expression\s*\(|javascript:/i;
+
+export function sanitizarTextoRico(valor) {
+    if (valor === null || valor === undefined) return '';
+    const bruto = String(valor);
+
+    // Nada de "<" no texto — não há o que sanitizar, e evita qualquer
+    // efeito colateral de passar texto puro por um parser de HTML.
+    if (!bruto.includes('<')) return bruto;
+
+    if (typeof window === 'undefined' || !window.DOMPurify) {
+        // DOMPurify não carregou (ex.: script bloqueado) — melhor
+        // perder a formatação do que arriscar HTML não filtrado.
+        console.warn('DOMPurify indisponível — texto exibido sem formatação.');
+        return escapeHtml(bruto);
+    }
+
+    let limpo = window.DOMPurify.sanitize(bruto, {
+        ALLOWED_TAGS: ALLOWLIST_TEXTO_RICO.ALLOWED_TAGS,
+        ALLOWED_ATTR: ALLOWLIST_TEXTO_RICO.ALLOWED_ATTR,
+    });
+
+    // DOMPurify por padrão permite qualquer propriedade CSS dentro de
+    // style="..."; filtramos manualmente pra só sobrar as da allowlist
+    // acima (bloqueia coisas como style="background:url(...)").
+    limpo = limpo.replace(/style="([^"]*)"/g, (match, decls) => {
+        const permitidas = decls
+            .split(';')
+            .map(d => d.trim())
+            .filter(Boolean)
+            .filter(d => {
+                const [propBruta, ...resto] = d.split(':');
+                const prop = propBruta?.trim().toLowerCase();
+                const valorDecl = resto.join(':').trim();
+                if (!ALLOWLIST_TEXTO_RICO.ALLOWED_STYLES.includes(prop)) return false;
+                if (VALOR_DE_ESTILO_PERIGOSO.test(valorDecl)) return false;
+                return true;
+            })
+            .join('; ');
+        return permitidas ? `style="${permitidas}"` : '';
+    });
+
+    // Rede de segurança contra HTML malformado (não malicioso — ex.:
+    // uma aspa de style="..." esquecida aberta). Quando isso acontece,
+    // o parser de HTML pode interpretar o resto do texto inteiro como
+    // "dentro" da tag quebrada e descartar tudo — um poema pode virar
+    // string vazia por causa de um erro de digitação de anos atrás,
+    // sem nenhum conteúdo malicioso envolvido. Isso já aconteceu com
+    // um poema real testado durante o desenvolvimento desta função.
+    // Se a sanitização reduziu drasticamente o texto visível, não
+    // confiamos no resultado: caímos pra texto puro escapado (sem
+    // formatação, mas sem perder o poema).
+    const textoPlanoAntes  = bruto.replace(/<[^>]*>/g, '').trim();
+    const textoPlanoDepois = limpo.replace(/<[^>]*>/g, '').trim();
+    if (textoPlanoAntes.length > 20 && textoPlanoDepois.length < textoPlanoAntes.length * 0.5) {
+        console.warn('sanitizarTextoRico: HTML possivelmente malformado — formatação removida, texto original preservado como texto puro.', bruto.slice(0, 80));
+        return escapeHtml(bruto);
+    }
+
+    return limpo;
+}
+
 // ─── Debounce ────────────────────────────────────────────────
 // Atrasa a chamada de fn até `espera` ms depois da última invocação.
 // Usado nos campos de busca (Poemas/Prosas): cada renderPoemas()/
@@ -311,6 +410,33 @@ function _modalExclusaoTeclado(e) {
     if (e.key === 'Escape') _fecharModalExclusao();
 }
 
+// ─── Rastreador de alterações não salvas ──────────────────────
+// Usado pelos modais de edição (Poema, Prosa) pra saber se dá pra
+// fechar direto ou se precisa confirmar antes (ver toggleModal em
+// modais.js). Marca "sujo" em qualquer 'input'/'change' real dentro
+// do formulário. Preencher campos via JS (.value = x, .checked = x,
+// opt.selected = x, como fazem editarPoema/editarProsa/prepararNovo)
+// NÃO dispara esses eventos — só interação de fato do usuário marca
+// sujo, então não é preciso "limpar" manualmente ao abrir o modal.
+// Precisa limpar manualmente só depois de um salvamento bem-sucedido
+// (o form continua com os mesmos valores que o usuário digitou, então
+// nenhum evento novo dispara pra avisar que agora está tudo salvo).
+export function criarRastreadorDeAlteracoes() {
+    let sujo = false;
+
+    function observar(form) {
+        if (!form) return;
+        form.addEventListener('input',  () => { sujo = true; });
+        form.addEventListener('change', () => { sujo = true; });
+    }
+
+    return {
+        observar,
+        estaSujo:    () => sujo,
+        marcarLimpo: () => { sujo = false; },
+    };
+}
+
 // ─── Aviso não-bloqueante (toast) ──────────────────────────────
 // Substitui os `alert()` nativos espalhados pelo app pra mensagens de
 // validação/erro simples ("selecione um vínculo", "nenhum item
@@ -425,6 +551,77 @@ export function anoDeDataParcial(dataObj) {
     return dataObj && dataObj.ano ? dataObj.ano : null;
 }
 
+// ─── Filtro por faixa de data (Escrita / Publicação) ───────────
+// Datas parciais (dia/mês/ano, cada um opcional) não podem ser comparadas
+// como um único ponto no tempo — "só o ano" representa qualquer dia
+// daquele ano. Por isso tratamos tanto o item quanto os limites do
+// filtro como uma FAIXA de datas possíveis, e consideramos "bateu" se
+// as duas faixas se sobrepõem. Isso evita esconder itens que têm menos
+// precisão cadastrada do que o filtro pede (ex.: filtrar por mês não
+// deve excluir um poema que só tem o ano).
+
+// [inicio, fim] em formato AAAAMMDD, preenchendo partes ausentes com o
+// limite mais aberto possível (menor pro início, maior pro fim).
+function faixaDeDataParcial(dataObj) {
+    if (!dataObj || (!dataObj.ano && !dataObj.mes && !dataObj.dia)) return null;
+    const chave = (a, m, d) => a * 10000 + m * 100 + d;
+    const ano = dataObj.ano, mes = dataObj.mes, dia = dataObj.dia;
+    return [
+        chave(ano ?? 0,    mes ?? 1,  dia ?? 1),
+        chave(ano ?? 9999, mes ?? 12, dia ?? 31)
+    ];
+}
+
+// filtro = { de: {dia?,mes?,ano?}, ate: {dia?,mes?,ano?} } — qualquer
+// um dos dois lados pode estar vazio (faixa aberta só de um lado).
+function faixaDeFiltro(filtro) {
+    const deObj  = filtro?.de  || {};
+    const ateObj = filtro?.ate || {};
+    const temDe  = deObj.ano  || deObj.mes  || deObj.dia;
+    const temAte = ateObj.ano || ateObj.mes || ateObj.dia;
+    if (!temDe && !temAte) return null;
+
+    const inicio = temDe  ? faixaDeDataParcial(deObj)[0]  : 0;
+    const fim    = temAte ? faixaDeDataParcial(ateObj)[1] : 99991231;
+    return [inicio, fim];
+}
+
+/**
+ * Retorna true se a data parcial de um item (dataEscrita ou
+ * dataPublicacao) cai dentro do filtro de faixa (de/até), ou se não há
+ * filtro ativo. Se há filtro ativo mas o item não tem essa data
+ * cadastrada, é excluído (não dá pra confirmar que ele se encaixa).
+ */
+export function itemBateFiltroData(dataItem, filtro) {
+    const faixaFiltro = faixaDeFiltro(filtro);
+    if (!faixaFiltro) return true;
+
+    const faixaItem = faixaDeDataParcial(dataItem);
+    if (!faixaItem) return false;
+
+    const [iniFiltro, fimFiltro] = faixaFiltro;
+    const [iniItem, fimItem]     = faixaItem;
+    return iniItem <= fimFiltro && fimItem >= iniFiltro;
+}
+
+// Um filtro de data "vazio" (de e até ambos sem nenhum campo) — usado
+// pra inicializar o estado e pra resetar ao trocar de aba/limpar.
+export function filtroDataVazio() {
+    return { de: {}, ate: {} };
+}
+
+// Retorna true se o filtro está ativo (tem algum limite de/até
+// preenchido) mas o item não tem essa data cadastrada — ou seja, ele
+// está sendo excluído só por falta de data, e não por estar fora da
+// faixa pedida. Usado pra avisar quantos itens caem nesse caso.
+export function itemFaltaDataParaFiltro(dataItem, filtro) {
+    const deObj  = filtro?.de  || {};
+    const ateObj = filtro?.ate || {};
+    const filtroAtivo = !!(deObj.ano || deObj.mes || deObj.dia || ateObj.ano || ateObj.mes || ateObj.dia);
+    if (!filtroAtivo) return false;
+    return !dataItem || (!dataItem.ano && !dataItem.mes && !dataItem.dia);
+}
+
 // Recebe o array db.poemas e retorna todos os nomes de pessoas únicos ordenados
 export function extrairPessoasUnicas(poemas) {
     const nomes = new Set();
@@ -439,13 +636,74 @@ export function extrairPessoasUnicas(poemas) {
     return Array.from(nomes).sort();
 }
 
+// Nomes de atributo aceitos no prefixo "campo:valor" (ver filtrarTextos
+// abaixo) → chave correspondente no item já decorado. livro/parte/secao
+// são preenchidos por decorarCamposBusca() em render-listas.js a partir
+// do vínculo estrutural (paiTipo/paiId) do poema/prosa.
+const CAMPOS_ATRIBUTO = {
+    titulo:   'titulo',
+    título:   'titulo',
+    texto:    'texto',
+    etiqueta: 'sinalizacoes',
+    pessoa:   'pessoas',
+    nota:     'notas',
+    livro:    '_buscaLivro',
+    parte:    '_buscaParte',
+    secao:    '_buscaSecao',
+    seção:    '_buscaSecao',
+};
+
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
-// procura em título, ano, sinalizações e pessoas ao mesmo tempo.
+// procura em título, ano, sinalizações, pessoas e livros ao mesmo tempo
+// — ou, opcionalmente, restrita a um atributo específico.
+//
+// Sintaxe estilo Google:
+//   - termos soltos, separados por espaço, precisam TODOS aparecer (E lógico)
+//   - "frase entre aspas" busca a sequência exata, com espaços
+//   - um "-" na frente de um termo (ou de uma frase entre aspas) exclui
+//     qualquer item que o contenha
+//   - um prefixo "campo:" restringe o termo a um atributo (ver
+//     CAMPOS_ATRIBUTO acima); sem prefixo, busca nos campos gerais
+// Ex.: Dalton -rascunho            → menciona Dalton, mas não a tag "rascunho"
+//      -2023                       → tudo, exceto o que tiver "2023"
+//      "beira do mar"              → só o que tiver essa sequência exata
+//      pessoa:Dalton               → só onde "Dalton" aparece em Pessoas
+//      -etiqueta:rascunho          → exclui quem tem a etiqueta "rascunho"
+//      secao:"Fragmentos do Fim"   → só quem está dentro dessa seção
 export function filtrarTextos(lista, query) {
     if (!query || !query.trim()) return lista;
-    const q = query.trim().toLowerCase();
+
+    // Cada match é, opcionalmente, um prefixo "campo:" seguido de uma
+    // frase entre aspas ou uma palavra solta, com "-" opcional na frente
+    // pra excluir — assim "frase exata" e "campo:"frase exata"" mantêm
+    // os espaços de dentro em vez de serem quebrados palavra por palavra.
+    const matches = query.trim().match(/-?(?:[a-zA-Zà-úÀ-Ú]+:)?"[^"]*"|-?\S+/g) || [];
+
+    const termosIncluir = [];
+    const termosExcluir = [];
+
+    matches.forEach(bruto => {
+        const excluir = bruto.startsWith('-');
+        let resto = excluir ? bruto.slice(1) : bruto;
+
+        let campo = null;
+        const casouCampo = resto.match(/^([a-zA-Zà-úÀ-Ú]+):([\s\S]*)$/);
+        if (casouCampo && CAMPOS_ATRIBUTO[casouCampo[1].toLowerCase()]) {
+            campo = CAMPOS_ATRIBUTO[casouCampo[1].toLowerCase()];
+            resto = casouCampo[2];
+        }
+
+        let termo = resto;
+        if (termo.startsWith('"') && termo.endsWith('"') && termo.length >= 2) {
+            termo = termo.slice(1, -1); // tira as aspas, mantém os espaços de dentro
+        }
+        termo = termo.trim().toLowerCase();
+        if (!termo) return;
+        (excluir ? termosExcluir : termosIncluir).push({ campo, termo });
+    });
+
     return lista.filter(item => {
-        const campos = [
+        const camposGerais = [
             item.titulo,
             item.ano,
             item.sinalizacoes,
@@ -453,7 +711,17 @@ export function filtrarTextos(lista, query) {
             item.notas,
             item._livros
         ].filter(Boolean).join(' ').toLowerCase();
-        return campos.includes(q);
+
+        const valorDoTermo = (t) => {
+            if (!t.campo) return camposGerais;
+            const v = item[t.campo];
+            return v == null ? '' : String(v).toLowerCase();
+        };
+
+        const combinaInclusao = termosIncluir.every(t => valorDoTermo(t).includes(t.termo));
+        const combinaExclusao = termosExcluir.some(t => valorDoTermo(t).includes(t.termo));
+
+        return combinaInclusao && !combinaExclusao;
     });
 }
 

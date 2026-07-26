@@ -200,6 +200,42 @@ export function resumoGeral() {
 
 const graficos = {}; // guarda instâncias do Chart.js pra poder destruir/recriar
 
+// Filtra { labels, data } mantendo só os pares cujo valor está dentro do
+// intervalo [min, max]. min/max vazios (null/'') = sem limite naquele lado.
+function filtrarPorIntervalo({ labels, data }, min, max) {
+    const temMin = min !== null && min !== '' && !isNaN(min);
+    const temMax = max !== null && max !== '' && !isNaN(max);
+    if (!temMin && !temMax) return { labels, data };
+
+    const minN = temMin ? Number(min) : -Infinity;
+    const maxN = temMax ? Number(max) : Infinity;
+
+    const labelsFiltrados = [];
+    const dataFiltrada = [];
+    labels.forEach((l, i) => {
+        const v = data[i];
+        if (v >= minN && v <= maxN) {
+            labelsFiltrados.push(l);
+            dataFiltrada.push(v);
+        }
+    });
+    return { labels: labelsFiltrados, data: dataFiltrada };
+}
+
+function lerIntervalo(sufixo) {
+    const min = document.getElementById(`est-min-${sufixo}`)?.value ?? '';
+    const max = document.getElementById(`est-max-${sufixo}`)?.value ?? '';
+    return [min, max];
+}
+
+function coresGrafico() {
+    const escuro = document.documentElement.classList.contains('dark');
+    return {
+        texto: escuro ? '#94a3b8' : '#374151',
+        grade: escuro ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)'
+    };
+}
+
 function criarBarChart(canvasId, labels, data, cor) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -223,12 +259,16 @@ function criarBarChart(canvasId, labels, data, cor) {
 
     if (graficos[canvasId]) graficos[canvasId].destroy();
 
+    const cores = coresGrafico();
     graficos[canvasId] = new Chart(canvas, {
         type: 'bar',
         data: { labels, datasets: [{ data, backgroundColor: cor, borderRadius: 4 }] },
         options: {
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            scales: {
+                x: { ticks: { color: cores.texto }, grid: { color: cores.grade } },
+                y: { beginAtZero: true, ticks: { precision: 0, color: cores.texto }, grid: { color: cores.grade } }
+            }
         }
     });
 }
@@ -248,9 +288,9 @@ function renderResumo() {
     ];
 
     container.innerHTML = cartoes.map(([rotulo, valor]) => `
-        <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
-            <div class="text-2xl font-black text-blue-700">${escapeHtml(valor)}</div>
-            <div class="text-[10px] uppercase text-gray-400 font-bold mt-1">${rotulo}</div>
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 text-center">
+            <div class="text-2xl font-black text-blue-700 dark:text-blue-300">${escapeHtml(valor)}</div>
+            <div class="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold mt-1">${rotulo}</div>
         </div>`).join('');
 }
 
@@ -283,11 +323,11 @@ function renderListaPalavras() {
 
     container.innerHTML = palavras.length
         ? palavras.map(([palavra, n], i) => `
-            <div class="flex justify-between items-center px-2 py-1 rounded ${i < 3 ? 'bg-blue-50' : ''}">
-                <span class="text-gray-700">${escapeHtml(palavra)}</span>
-                <span class="text-gray-400 font-mono text-xs">${n}</span>
+            <div class="flex justify-between items-center px-2 py-1 rounded ${i < 3 ? 'bg-blue-50 dark:bg-blue-950' : ''}">
+                <span class="text-gray-700 dark:text-slate-200">${escapeHtml(palavra)}</span>
+                <span class="text-gray-400 dark:text-slate-500 font-mono text-xs">${n}</span>
             </div>`).join('')
-        : '<p class="text-gray-400 col-span-full">Sem texto suficiente pra analisar ainda.</p>';
+        : '<p class="text-gray-400 dark:text-slate-500 col-span-full">Sem texto suficiente pra analisar ainda.</p>';
 }
 
 export function renderEstatisticas() {
@@ -295,22 +335,34 @@ export function renderEstatisticas() {
     popularSeletorLivroPalavras();
     renderListaPalavras();
 
-    const porAno = contarPorAno();
+    const [minAno, maxAno] = lerIntervalo('ano');
+    const porAno = filtrarPorIntervalo(contarPorAno(), minAno, maxAno);
     criarBarChart('grafico-ano', porAno.labels, porAno.data, '#1d4ed8');
 
-    const porLivro = contarPorLivro();
+    const [minLivro, maxLivro] = lerIntervalo('livro');
+    const porLivro = filtrarPorIntervalo(contarPorLivro(), minLivro, maxLivro);
     criarBarChart('grafico-livro', porLivro.labels, porLivro.data, '#4f46e5');
 
-    const porTema = contarPorTema();
+    const [minTemas, maxTemas] = lerIntervalo('temas');
+    const porTema = filtrarPorIntervalo(contarPorTema(), minTemas, maxTemas);
     criarBarChart('grafico-temas', porTema.labels, porTema.data, '#0d9488');
 
-    const porPessoa = contarPorPessoa();
+    const [minPessoas, maxPessoas] = lerIntervalo('pessoas');
+    const porPessoa = filtrarPorIntervalo(contarPorPessoa(), minPessoas, maxPessoas);
     criarBarChart('grafico-pessoas', porPessoa.labels, porPessoa.data, '#e11d48');
 }
 
 window.addEventListener('db:saved', () => {
     // só recalcula se a aba de Estatísticas estiver visível, pra não gastar
     // processamento toda hora que algo é salvo em outra aba
+    if (document.getElementById('estatisticas')?.classList.contains('active')) {
+        renderEstatisticas();
+    }
+});
+
+// Troca de tema (ver theme.js) muda as cores fixas do Chart.js — não dá pra
+// resolver só com CSS, então redesenha os gráficos se a aba estiver aberta.
+window.addEventListener('tema:alterado', () => {
     if (document.getElementById('estatisticas')?.classList.contains('active')) {
         renderEstatisticas();
     }

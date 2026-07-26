@@ -9,14 +9,7 @@ import { extrairSinalizacoesUnicas, extrairPessoasUnicas, escapeHtml } from './u
 // ─── Estado local ─────────────────────────────────────────────
 
 export let lastSelection = { start: 0, end: 0 };
-export let tagsAtuais = [];
-export let pessoasAtuais = [];
 let alignAtual = null;
-
-// ─── Tags/Pessoas para Prosa ──────────────────────────────────
-
-let tagsProsa = [];
-let pessoasProsa = [];
 
 // ─── Formatação inline ───────────────────────────────────────
 
@@ -66,6 +59,77 @@ export function setAlign(valor) {
     });
 }
 
+// ─── Fábrica de grupos de tags/pessoas ────────────────────────
+// Poema/Tags, Poema/Pessoas, Prosa/Tags, Prosa/Pessoas são o mesmo
+// comportamento (adicionar, remover, renderizar como chips, resetar,
+// carregar a partir de uma string "a, b, c") variando só os IDs do
+// DOM e a cor do badge. Em vez de 4 cópias, uma única implementação
+// parametrizada; cada grupo guarda seu próprio array em closure —
+// sem estado global compartilhado entre Poema e Prosa.
+function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nomeFuncaoRemover }) {
+    let itens = [];
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const item  = (valor ?? input?.value ?? '').trim();
+        if (item && !itens.includes(item)) {
+            itens.push(item);
+            renderizar();
+        }
+        if (input) input.value = '';
+    }
+
+    function remover(item) {
+        itens = itens.filter(i => i !== item);
+        renderizar();
+    }
+
+    function renderizar() {
+        const container   = document.getElementById(containerId);
+        const inputOculto = document.getElementById(hiddenInputId);
+        if (!container) return;
+
+        container.innerHTML = itens.map(i => `
+            <span class="${corClasse} text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
+                ${escapeHtml(i)}
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
+            </span>`).join('');
+
+        if (inputOculto) inputOculto.value = itens.join(', ');
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    function carregar(valorStr) {
+        itens = valorStr
+            ? valorStr.split(',').map(s => s.trim()).filter(s => s)
+            : [];
+        renderizar();
+    }
+
+    return { adicionar, remover, renderizar, reset, carregar };
+}
+
+const grupoTagsPoema = criarGrupoDeTags({
+    inputId: 'p-sinal-input', containerId: 'p-tags-container', hiddenInputId: 'p-sinal',
+    corClasse: 'bg-blue-600', nomeFuncaoRemover: 'removerTag',
+});
+const grupoPessoasPoema = criarGrupoDeTags({
+    inputId: 'p-pessoa-input', containerId: 'p-pessoas-container', hiddenInputId: 'p-pessoas',
+    corClasse: 'bg-rose-500', nomeFuncaoRemover: 'removerPessoa',
+});
+const grupoTagsProsa = criarGrupoDeTags({
+    inputId: 'pr-sinal-input', containerId: 'pr-tags-container', hiddenInputId: 'pr-sinal',
+    corClasse: 'bg-blue-600', nomeFuncaoRemover: 'removerTagProsa',
+});
+const grupoPessoasProsa = criarGrupoDeTags({
+    inputId: 'pr-pessoa-input', containerId: 'pr-pessoas-container', hiddenInputId: 'pr-pessoas',
+    corClasse: 'bg-rose-500', nomeFuncaoRemover: 'removerPessoaProsa',
+});
+
 // ─── Tags (Sinalizações) ─────────────────────────────────────
 
 export function atualizarDatalist() {
@@ -78,46 +142,11 @@ export function atualizarDatalist() {
     atualizarDatalistPessoas();
 }
 
-export function adicionarTag(valor = null) {
-    const input = document.getElementById('p-sinal-input');
-    const tag   = (valor || input?.value || '').trim();
-    if (tag && !tagsAtuais.includes(tag)) {
-        tagsAtuais.push(tag);
-        renderizarTags();
-    }
-    if (input) input.value = '';
-}
-
-export function removerTag(tag) {
-    tagsAtuais = tagsAtuais.filter(t => t !== tag);
-    renderizarTags();
-}
-
-export function renderizarTags() {
-    const container   = document.getElementById('p-tags-container');
-    const inputOculto = document.getElementById('p-sinal');
-    if (!container) return;
-
-    container.innerHTML = tagsAtuais.map(t => `
-        <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${escapeHtml(t)}
-            <button type="button" data-valor="${escapeHtml(t)}" onclick="removerTag(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
-        </span>`).join('');
-
-    if (inputOculto) inputOculto.value = tagsAtuais.join(', ');
-}
-
-export function resetTags() {
-    tagsAtuais = [];
-    renderizarTags();
-}
-
-export function carregarTags(sinalizacoesStr) {
-    tagsAtuais = sinalizacoesStr
-        ? sinalizacoesStr.split(',').map(s => s.trim()).filter(s => s)
-        : [];
-    renderizarTags();
-}
+export function adicionarTag(valor = null)    { grupoTagsPoema.adicionar(valor); }
+export function removerTag(tag)               { grupoTagsPoema.remover(tag); }
+export function renderizarTags()              { grupoTagsPoema.renderizar(); }
+export function resetTags()                   { grupoTagsPoema.reset(); }
+export function carregarTags(sinalizacoesStr) { grupoTagsPoema.carregar(sinalizacoesStr); }
 
 // ─── Pessoas (Dedicado a) ──────────────────────────────────────
 // Mesmo padrão das Sinalizações, mas em grupo separado: pessoas
@@ -131,46 +160,11 @@ export function atualizarDatalistPessoas() {
         .join('');
 }
 
-export function adicionarPessoa(valor = null) {
-    const input = document.getElementById('p-pessoa-input');
-    const nome  = (valor || input?.value || '').trim();
-    if (nome && !pessoasAtuais.includes(nome)) {
-        pessoasAtuais.push(nome);
-        renderizarPessoas();
-    }
-    if (input) input.value = '';
-}
-
-export function removerPessoa(nome) {
-    pessoasAtuais = pessoasAtuais.filter(p => p !== nome);
-    renderizarPessoas();
-}
-
-export function renderizarPessoas() {
-    const container   = document.getElementById('p-pessoas-container');
-    const inputOculto = document.getElementById('p-pessoas');
-    if (!container) return;
-
-    container.innerHTML = pessoasAtuais.map(nome => `
-        <span class="bg-rose-500 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${escapeHtml(nome)}
-            <button type="button" data-valor="${escapeHtml(nome)}" onclick="removerPessoa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
-        </span>`).join('');
-
-    if (inputOculto) inputOculto.value = pessoasAtuais.join(', ');
-}
-
-export function resetPessoas() {
-    pessoasAtuais = [];
-    renderizarPessoas();
-}
-
-export function carregarPessoas(pessoasStr) {
-    pessoasAtuais = pessoasStr
-        ? pessoasStr.split(',').map(s => s.trim()).filter(s => s)
-        : [];
-    renderizarPessoas();
-}
+export function adicionarPessoa(valor = null) { grupoPessoasPoema.adicionar(valor); }
+export function removerPessoa(nome)           { grupoPessoasPoema.remover(nome); }
+export function renderizarPessoas()           { grupoPessoasPoema.renderizar(); }
+export function resetPessoas()                { grupoPessoasPoema.reset(); }
+export function carregarPessoas(pessoasStr)   { grupoPessoasPoema.carregar(pessoasStr); }
 
 // ─── Inicialização dos listeners ─────────────────────────────
 
@@ -178,97 +172,51 @@ export function carregarPessoas(pessoasStr) {
 // ─── Tags/Pessoas: Prosa (espelha o padrão do Poema) ─────────
 
 export function atualizarDatalistProsa() {
+    const sinaisUnicos  = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas || [])]);
+    const pessoasUnicas = extrairPessoasUnicas([...db.poemas, ...(db.prosas || [])]);
+
+    // Datalists dentro do modal de Prosa (só existem depois que o modal
+    // é carregado ao menos uma vez — ver modal-prosa.html / modais.js)
     const datalistSinais = document.getElementById('sugestoes-sinais-prosa');
     if (datalistSinais) {
-        datalistSinais.innerHTML = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas||[])])
+        datalistSinais.innerHTML = sinaisUnicos
             .map(tag => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     const datalistPessoas = document.getElementById('sugestoes-pessoas-prosa');
     if (datalistPessoas) {
-        datalistPessoas.innerHTML = extrairPessoasUnicas([...db.poemas, ...(db.prosas||[])])
+        datalistPessoas.innerHTML = pessoasUnicas
+            .map(nome => `<option value="${escapeHtml(nome)}">`)
+            .join('');
+    }
+
+    // Datalists sempre presentes no index.html, usados pela barra de
+    // edição em massa da aba Prosas (independem do modal ter sido aberto)
+    const datalistSinaisBulk = document.getElementById('sugestoes-sinais-bulk-prosa');
+    if (datalistSinaisBulk) {
+        datalistSinaisBulk.innerHTML = sinaisUnicos
+            .map(tag => `<option value="${escapeHtml(tag)}">`)
+            .join('');
+    }
+    const datalistPessoasBulk = document.getElementById('sugestoes-pessoas-bulk-prosa');
+    if (datalistPessoasBulk) {
+        datalistPessoasBulk.innerHTML = pessoasUnicas
             .map(nome => `<option value="${escapeHtml(nome)}">`)
             .join('');
     }
 }
 
-export function adicionarTagProsa(valor = null) {
-    const input = document.getElementById('pr-sinal-input');
-    const tag   = (valor || input?.value || '').trim();
-    if (tag && !tagsProsa.includes(tag)) {
-        tagsProsa.push(tag);
-        renderizarTagsProsa();
-    }
-    if (input) input.value = '';
-}
+export function adicionarTagProsa(valor = null)    { grupoTagsProsa.adicionar(valor); }
+export function removerTagProsa(tag)               { grupoTagsProsa.remover(tag); }
+export function renderizarTagsProsa()              { grupoTagsProsa.renderizar(); }
+export function resetTagsProsa()                   { grupoTagsProsa.reset(); }
+export function carregarTagsProsa(sinalizacoesStr) { grupoTagsProsa.carregar(sinalizacoesStr); }
 
-export function removerTagProsa(tag) {
-    tagsProsa = tagsProsa.filter(t => t !== tag);
-    renderizarTagsProsa();
-}
-
-export function renderizarTagsProsa() {
-    const container   = document.getElementById('pr-tags-container');
-    const inputOculto = document.getElementById('pr-sinal');
-    if (!container) return;
-    container.innerHTML = tagsProsa.map(t => `
-        <span class="bg-blue-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${escapeHtml(t)}
-            <button type="button" data-valor="${escapeHtml(t)}" onclick="removerTagProsa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
-        </span>`).join('');
-    if (inputOculto) inputOculto.value = tagsProsa.join(', ');
-}
-
-export function resetTagsProsa() {
-    tagsProsa = [];
-    renderizarTagsProsa();
-}
-
-export function carregarTagsProsa(sinalizacoesStr) {
-    tagsProsa = sinalizacoesStr
-        ? sinalizacoesStr.split(',').map(s => s.trim()).filter(s => s)
-        : [];
-    renderizarTagsProsa();
-}
-
-export function adicionarPessoaProsa(valor = null) {
-    const input = document.getElementById('pr-pessoa-input');
-    const nome  = (valor || input?.value || '').trim();
-    if (nome && !pessoasProsa.includes(nome)) {
-        pessoasProsa.push(nome);
-        renderizarPessoasProsa();
-    }
-    if (input) input.value = '';
-}
-
-export function removerPessoaProsa(nome) {
-    pessoasProsa = pessoasProsa.filter(p => p !== nome);
-    renderizarPessoasProsa();
-}
-
-export function renderizarPessoasProsa() {
-    const container   = document.getElementById('pr-pessoas-container');
-    const inputOculto = document.getElementById('pr-pessoas');
-    if (!container) return;
-    container.innerHTML = pessoasProsa.map(nome => `
-        <span class="bg-rose-500 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
-            ${escapeHtml(nome)}
-            <button type="button" data-valor="${escapeHtml(nome)}" onclick="removerPessoaProsa(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
-        </span>`).join('');
-    if (inputOculto) inputOculto.value = pessoasProsa.join(', ');
-}
-
-export function resetPessoasProsa() {
-    pessoasProsa = [];
-    renderizarPessoasProsa();
-}
-
-export function carregarPessoasProsa(pessoasStr) {
-    pessoasProsa = pessoasStr
-        ? pessoasStr.split(',').map(s => s.trim()).filter(s => s)
-        : [];
-    renderizarPessoasProsa();
-}
+export function adicionarPessoaProsa(valor = null) { grupoPessoasProsa.adicionar(valor); }
+export function removerPessoaProsa(nome)           { grupoPessoasProsa.remover(nome); }
+export function renderizarPessoasProsa()           { grupoPessoasProsa.renderizar(); }
+export function resetPessoasProsa()                { grupoPessoasProsa.reset(); }
+export function carregarPessoasProsa(pessoasStr)   { grupoPessoasProsa.carregar(pessoasStr); }
 
 export function initEditor() {
     const textarea = document.getElementById('p-texto');

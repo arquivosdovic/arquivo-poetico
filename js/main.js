@@ -9,8 +9,11 @@ import { listarSnapshots, baixarSnapshot } from './autobackup.js';
 import { openTab, toggleModal, prepararNovo,
          renderDropdowns, toggleCamposIntroducao,
          sugerirSequencia, filtrarDestinoPoema,
-         filtrarDestinoProsa, autoPreencherDataPublicacao } from './ui.js';
+         filtrarDestinoProsa, autoPreencherDataPublicacao,
+         togglePainel } from './ui.js';
 import { registrarModal }                                   from './modais.js';
+import { toggleColuna, moverColuna }                         from './colunas.js';
+import { initTema, setTema }                                 from './theme.js';
 import { renderLists }                                      from './render.js';
 import { setFiltroPoemas, setFiltroProsas,
          setFiltroLivroPoemas,
@@ -19,9 +22,16 @@ import { setFiltroPoemas, setFiltroProsas,
          limparSelecaoPoemas, aplicarPessoaEmMassa,
          removerPessoaEmMassa, aplicarSinalEmMassa,
          removerSinalEmMassa,
+         toggleSelecaoProsa, toggleSelecaoTodosProsas,
+         limparSelecaoProsas, aplicarPessoaEmMassaProsa,
+         removerPessoaEmMassaProsa, aplicarSinalEmMassaProsa,
+         removerSinalEmMassaProsa,
          setFiltroLivroPartes, setFiltroLivroSecoes,
          setFiltroParteSecoes, setFiltroLivroElementos,
-         setFiltroLivroProsa, moverLivro }                     from './render-listas.js';
+         setFiltroLivroProsa, moverLivro,
+         setFiltroDataEscritaPoemas, setFiltroDataPublicacaoPoemas,
+         setFiltroDataEscritaProsas, setFiltroDataPublicacaoProsas,
+         limparFiltroDataPoemas, limparFiltroDataProsas }      from './render-listas.js';
 import { setLivroEstrutura,
          moverItemEstrutura, abrirModalMoverNivel,
          toggleSelecaoEstrutura, marcarTodosEstrutura,
@@ -36,6 +46,7 @@ import { renderEstatisticas }                               from './estatisticas
 import { initEditor, adicionarTag, removerTag,
          applyStyle, wrapText, renderizarTags, setAlign,
          adicionarPessoa, removerPessoa, atualizarDatalist,
+         atualizarDatalistProsa,
          adicionarTagProsa, removerTagProsa,
          adicionarPessoaProsa, removerPessoaProsa }  from './editor.js';
 import { initFormLivro,   editarLivro,
@@ -43,7 +54,8 @@ import { initFormLivro,   editarLivro,
          initFormSecao,   editarSecao,
          initFormPoema,   editarPoema,
          initFormProsa,   editarProsa,
-         initFormElemento, editarElemento }               from './forms.js';
+         initFormElemento, editarElemento,
+         rastreadorPoema, rastreadorProsa }               from './forms.js';
 import { renderColetaneas, selecionarColetanea,
          prepararNovaParte, editarParteColetanea,
          deletarParteColetanea, prepararNovoItem,
@@ -61,8 +73,8 @@ import { renderColetaneas, selecionarColetanea,
 registrarModal('modal-livro',     'modal-livro.html',     initFormLivro);
 registrarModal('modal-parte',     'modal-parte.html',     initFormParte);
 registrarModal('modal-secao',     'modal-secao.html',     initFormSecao);
-registrarModal('modal-poema',     'modal-poema.html',     () => { initFormPoema(); initEditor(); });
-registrarModal('modal-prosa',     'modal-prosa.html',     initFormProsa);
+registrarModal('modal-poema',     'modal-poema.html',     () => { initFormPoema(); initEditor(); }, rastreadorPoema);
+registrarModal('modal-prosa',     'modal-prosa.html',     initFormProsa, rastreadorProsa);
 registrarModal('modal-elemento',  'modal-elemento.html',  initFormElemento);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item',  'modal-col-item.html',  initFormColItem);
@@ -73,9 +85,11 @@ registrarModal('modal-col-item',  'modal-col-item.html',  initFormColItem);
 // resolve (ver registrarModal acima e modais.js).
 
 document.addEventListener('DOMContentLoaded', () => {
+    initTema();
     renderColetaneas();
     renderLists();
     atualizarDatalist();
+    atualizarDatalistProsa();
     popularSelecaoExportacao();
     atualizarIndicadorBackup();
     renderListaSnapshots();
@@ -103,15 +117,15 @@ async function renderListaSnapshots() {
 
     const snapshots = await listarSnapshots();
     if (snapshots.length === 0) {
-        container.innerHTML = '<p class="text-gray-400">Nenhum snapshot automático ainda — aparece aqui depois de um tempinho de uso.</p>';
+        container.innerHTML = '<p class="text-gray-400 dark:text-slate-500">Nenhum snapshot automático ainda — aparece aqui depois de um tempinho de uso.</p>';
         return;
     }
 
     container.innerHTML = snapshots.map((s, i) => `
-        <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5">
-            <span class="text-gray-600">${formatarDataSnapshot(s.dataISO)}${i === 0 ? ' <span class="text-emerald-600 font-bold">· mais recente</span>' : ''}</span>
+        <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+            <span class="text-gray-600 dark:text-slate-300">${formatarDataSnapshot(s.dataISO)}${i === 0 ? ' <span class="text-emerald-600 dark:text-emerald-400 font-bold">· mais recente</span>' : ''}</span>
             <button data-snapshot-id="${s.id}" onclick="baixarSnapshotPorId(this.dataset.snapshotId)"
-                class="text-blue-600 hover:underline font-bold">baixar</button>
+                class="text-blue-600 dark:text-blue-400 hover:underline font-bold">baixar</button>
         </div>`).join('');
 }
 window.addEventListener('backup:feito', renderListaSnapshots);
@@ -134,17 +148,17 @@ function atualizarIndicadorBackup() {
     const ultimo = getUltimoBackup();
     if (!ultimo) {
         el.textContent = 'Nenhum backup baixado ainda';
-        el.className = 'text-xs font-medium text-red-500';
+        el.className = 'text-xs font-medium text-red-500 dark:text-red-400';
         return;
     }
 
     const dias = Math.floor((Date.now() - ultimo.getTime()) / 86400000);
     let texto, cor;
-    if (dias <= 0)      { texto = 'Último backup: hoje';        cor = 'text-emerald-600'; }
-    else if (dias === 1) { texto = 'Último backup: ontem';       cor = 'text-emerald-600'; }
-    else if (dias <= 3)  { texto = `Último backup: há ${dias} dias`; cor = 'text-gray-400'; }
-    else if (dias <= 7)  { texto = `Último backup: há ${dias} dias`; cor = 'text-amber-600'; }
-    else                 { texto = `Último backup: há ${dias} dias`; cor = 'text-red-500'; }
+    if (dias <= 0)      { texto = 'Último backup: hoje';        cor = 'text-emerald-600 dark:text-emerald-400'; }
+    else if (dias === 1) { texto = 'Último backup: ontem';       cor = 'text-emerald-600 dark:text-emerald-400'; }
+    else if (dias <= 3)  { texto = `Último backup: há ${dias} dias`; cor = 'text-gray-400 dark:text-slate-500'; }
+    else if (dias <= 7)  { texto = `Último backup: há ${dias} dias`; cor = 'text-amber-600 dark:text-amber-400'; }
+    else                 { texto = `Último backup: há ${dias} dias`; cor = 'text-red-500 dark:text-red-400'; }
 
     el.textContent = texto;
     el.className = `text-xs font-medium ${cor}`;
@@ -209,6 +223,16 @@ window.setFiltroLivroProsa = setFiltroLivroProsa;
 window.setFiltroLivroPoemas = setFiltroLivroPoemas;
 window.setOrdenacaoPoemas = setOrdenacaoPoemas;
 window.setStatusPoemas    = setStatusPoemas;
+window.togglePainel = togglePainel;
+window.toggleColuna = toggleColuna;
+window.moverColuna  = moverColuna;
+window.setTema      = setTema;
+window.setFiltroDataEscritaPoemas    = setFiltroDataEscritaPoemas;
+window.setFiltroDataPublicacaoPoemas = setFiltroDataPublicacaoPoemas;
+window.setFiltroDataEscritaProsas    = setFiltroDataEscritaProsas;
+window.setFiltroDataPublicacaoProsas = setFiltroDataPublicacaoProsas;
+window.limparFiltroDataPoemas = limparFiltroDataPoemas;
+window.limparFiltroDataProsas = limparFiltroDataProsas;
 window.toggleSelecaoPoema      = toggleSelecaoPoema;
 window.toggleSelecaoTodosPoemas = toggleSelecaoTodosPoemas;
 window.limparSelecaoPoemas     = limparSelecaoPoemas;
@@ -216,6 +240,13 @@ window.aplicarPessoaEmMassa    = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa    = removerPessoaEmMassa;
 window.aplicarSinalEmMassa     = aplicarSinalEmMassa;
 window.removerSinalEmMassa     = removerSinalEmMassa;
+window.toggleSelecaoProsa       = toggleSelecaoProsa;
+window.toggleSelecaoTodosProsas = toggleSelecaoTodosProsas;
+window.limparSelecaoProsas      = limparSelecaoProsas;
+window.aplicarPessoaEmMassaProsa   = aplicarPessoaEmMassaProsa;
+window.removerPessoaEmMassaProsa   = removerPessoaEmMassaProsa;
+window.aplicarSinalEmMassaProsa    = aplicarSinalEmMassaProsa;
+window.removerSinalEmMassaProsa    = removerSinalEmMassaProsa;
 window.setLivroEstrutura       = setLivroEstrutura;
 window.moverItemEstrutura      = moverItemEstrutura;
 window.moverLivro              = moverLivro;

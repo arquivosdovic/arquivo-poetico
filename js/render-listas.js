@@ -1,7 +1,7 @@
 // ============================================================
 // render-listas.js — Renderização das abas em lista/grid/tabela:
-// Livros, Partes, Seções, Poemas (com seleção múltipla e ações
-// em massa), Prosas e Elementos.
+// Livros, Partes, Seções, Poemas e Prosas (ambas com seleção
+// múltipla e ações em massa) e Elementos.
 //
 // Extraído de render.js — ver render-estrutura.js (árvore da aba
 // "Estrutura") e render-lightbox.js (capas + lightbox, usado aqui
@@ -10,20 +10,46 @@
 
 import { db, save } from './db.js';
 import { getElementHierarchy, getPosicaoElemento, filtrarTextos, formatarDataParcial,
-         escapeHtml, abrirModalConfirmacao } from './utils.js';
+         escapeHtml, sanitizarTextoRico, abrirModalConfirmacao, itemBateFiltroData, filtroDataVazio,
+         itemFaltaDataParaFiltro } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
+import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
+
+// Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
+// correspondente precisa recalcular cabeçalho + linhas.
+window.addEventListener('colunas:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'poemas') renderPoemas();
+    if (ev.detail?.tabela === 'prosas') renderProsas();
+});
 
 let filtroPoemas = '';
 let filtroProsas = '';
 let filtroLivroProsa = '';
 let filtroLivroPoemas = '';
+
+// Filtros de faixa de data (De/Até), independentes da busca por texto —
+// ver itemBateFiltroData em utils.js pra semântica de sobreposição de
+// faixas com datas parciais.
+let filtroDataEscritaPoemas    = filtroDataVazio();
+let filtroDataPublicacaoPoemas = filtroDataVazio();
+let filtroDataEscritaProsas    = filtroDataVazio();
+let filtroDataPublicacaoProsas = filtroDataVazio();
 let ordenacaoPoemas = 'padrao';
 let statusPoemas = 'todos';
 let selecaoPoemas = new Set();
+let selecaoProsas = new Set();
 let filtroLivroPartes = '';
 let filtroLivroSecoes = '';
 let filtroParteSecoes = '';
 let filtroLivroElementos = '';
+
+// Quantos itens ficaram de fora da lista atual só por não terem a data
+// cadastrada que o filtro de data (ativo) precisaria pra avaliar —
+// distinto de estarem fora da faixa pedida. Atualizado a cada
+// getListaVisivelPoemas()/getListaVisivelProsas() e lido por
+// renderPoemas()/renderProsas() pra exibir o aviso na tela.
+let semDataPoemas = 0;
+let semDataProsas = 0;
 
 export function setFiltroLivroPartes(valor) {
     filtroLivroPartes = valor;
@@ -145,12 +171,163 @@ export function setStatusPoemas(valor) {
     renderPoemas();
 }
 
+// ─── Filtros de faixa de data (Escrita / Publicação) ───────────
+// ladoFaixa: 'de' | 'ate' — parte: 'dia' | 'mes' | 'ano'
+// Campo vazio remove a restrição daquela parte (não trava em 0).
+function aplicarValorFiltroData(filtro, ladoFaixa, parte, valor) {
+    const n = parseInt(valor);
+    if (valor === '' || valor == null || isNaN(n)) delete filtro[ladoFaixa][parte];
+    else filtro[ladoFaixa][parte] = n;
+}
+
+export function setFiltroDataEscritaPoemas(ladoFaixa, parte, valor) {
+    aplicarValorFiltroData(filtroDataEscritaPoemas, ladoFaixa, parte, valor);
+    renderPoemas();
+}
+
+export function setFiltroDataPublicacaoPoemas(ladoFaixa, parte, valor) {
+    aplicarValorFiltroData(filtroDataPublicacaoPoemas, ladoFaixa, parte, valor);
+    renderPoemas();
+}
+
+export function setFiltroDataEscritaProsas(ladoFaixa, parte, valor) {
+    aplicarValorFiltroData(filtroDataEscritaProsas, ladoFaixa, parte, valor);
+    renderProsas();
+}
+
+export function setFiltroDataPublicacaoProsas(ladoFaixa, parte, valor) {
+    aplicarValorFiltroData(filtroDataPublicacaoProsas, ladoFaixa, parte, valor);
+    renderProsas();
+}
+
+// Limpa os inputs de dia/mes/ano de um painel de filtro de data em tela
+// (não mexe no estado — quem chama já reseta o objeto de filtro).
+function limparCamposDataNaTela(prefixo) {
+    ['de', 'ate'].forEach(ladoFaixa => {
+        ['dia', 'mes', 'ano'].forEach(parte => {
+            const el = document.getElementById(`${prefixo}-${ladoFaixa}-${parte}`);
+            if (el) el.value = '';
+        });
+    });
+}
+
+// Mostra/esconde o avisinho de "N item(ns) fora só por falta de data"
+// ao lado do botão "Filtrar por data" — fica visível mesmo com o painel
+// de filtro recolhido, já que é justamente um alerta sobre um filtro
+// que pode estar ativo sem estar visível na tela.
+function atualizarAvisoSemData(elId, quantidade) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (quantidade > 0) {
+        const item = quantidade === 1 ? 'item' : 'itens';
+        const verbo = quantidade === 1 ? 'ficou' : 'ficaram';
+        el.textContent = `⚠️ ${quantidade} ${item} ${verbo} de fora só por falta de data cadastrada`;
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+export function limparFiltroDataPoemas() {
+    filtroDataEscritaPoemas    = filtroDataVazio();
+    filtroDataPublicacaoPoemas = filtroDataVazio();
+    limparCamposDataNaTela('filtro-pd-esc');
+    limparCamposDataNaTela('filtro-pd-pub');
+    renderPoemas();
+}
+
+export function limparFiltroDataProsas() {
+    filtroDataEscritaProsas    = filtroDataVazio();
+    filtroDataPublicacaoProsas = filtroDataVazio();
+    limparCamposDataNaTela('filtro-prd-esc');
+    limparCamposDataNaTela('filtro-prd-pub');
+    renderProsas();
+}
+
 // Retorna os títulos dos livros vinculados a um poema (via livrosIds)
 function nomesLivros(p) {
     return (p.livrosIds || [])
         .map(id => db.livros.find(l => l.id == id)?.titulo)
         .filter(Boolean)
         .join(', ');
+}
+
+// Deriva, a partir do vínculo estrutural do item (paiTipo/paiId), os
+// campos auxiliares usados pelo filtro por atributo "livro:"/"parte:"/
+// "secao:" em filtrarTextos (utils.js). extraLivros é usado só pra
+// Poemas, que também podem estar vinculados a outros livros/coletâneas
+// via livrosIds (ver nomesLivros acima).
+function decorarCamposBusca(item, extraLivros = '') {
+    let livroTitulo = '', parteTitulo = '', secaoTitulo = '';
+
+    if (item.paiTipo === 'livro') {
+        livroTitulo = db.livros.find(l => l.id == item.paiId)?.titulo || '';
+    } else if (item.paiTipo === 'parte') {
+        const parte = db.partes.find(p => p.id == item.paiId);
+        parteTitulo = parte?.titulo || '';
+        if (parte) livroTitulo = db.livros.find(l => l.id == parte.livroId)?.titulo || '';
+    } else if (item.paiTipo === 'secao') {
+        const secao = db.secoes.find(s => s.id == item.paiId);
+        secaoTitulo = secao?.titulo || '';
+        if (secao?.paiTipo === 'parte') {
+            const parte = db.partes.find(p => p.id == secao.paiId);
+            parteTitulo = parte?.titulo || '';
+            if (parte) livroTitulo = db.livros.find(l => l.id == parte.livroId)?.titulo || '';
+        } else if (secao) {
+            livroTitulo = db.livros.find(l => l.id == secao.paiId)?.titulo || '';
+        }
+    }
+
+    return {
+        ...item,
+        _buscaLivro: [livroTitulo, extraLivros].filter(Boolean).join(' '),
+        _buscaParte: parteTitulo,
+        _buscaSecao: secaoTitulo,
+    };
+}
+
+// ─── Colunas dinâmicas de Poemas/Prosas ────────────────────────
+
+// Badges de etiqueta (reaproveitado nas colunas opcionais "Etiquetas")
+function badgesEtiquetas(sinalizacoes) {
+    if (!sinalizacoes) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return sinalizacoes.split(',').map(t => t.trim()).filter(Boolean)
+        .map(t => `<span class="text-[9px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`)
+        .join('') || '<span class="text-gray-300 dark:text-slate-600">—</span>';
+}
+
+// Títulos dos poemas referenciados por uma lista de IDs (Elos/Referências)
+function titulosPoemasPorId(ids) {
+    if (!ids || !ids.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    const titulos = ids.map(id => db.poemas.find(p => p.id == id)?.titulo).filter(Boolean);
+    if (!titulos.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return titulos.map(t => escapeHtml(t)).join(', ');
+}
+
+function trechoNota(notas) {
+    if (!notas) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    const limpo = notas.trim();
+    const trecho = limpo.length > 80 ? limpo.slice(0, 80) + '…' : limpo;
+    return `<span title="${escapeHtml(limpo)}">${escapeHtml(trecho)}</span>`;
+}
+
+// Monta o <thead> de Poemas ou Prosas de acordo com as colunas ativas.
+// `celulaCheck`/`celulaTitulo`/`celulaAcoes` são o HTML fixo de início/fim
+// (checkbox, título e Ações), que não passam pelo seletor de colunas.
+function montarCabecalho(tabela, celulaCheck, celulaTitulo, celulaAcoes) {
+    const ativas = getColunasAtivas(tabela);
+    const def = DEFINICAO_COLUNAS[tabela];
+    const meio = ativas
+        .map(key => def.find(c => c.key === key))
+        .filter(Boolean)
+        .map(c => `<th class="p-4 border-b border-gray-200 dark:border-slate-700">${c.label}</th>`)
+        .join('');
+    return celulaCheck + celulaTitulo + meio + celulaAcoes;
+}
+
+function atualizarPainelColunas(tabela, painelId) {
+    const painel = document.getElementById(painelId);
+    if (painel) painel.innerHTML = renderSeletorColunas(tabela);
 }
 
 // ─── Seleção múltipla de Poemas (ações em massa) ──────────────
@@ -181,8 +358,21 @@ function getListaVisivelPoemas() {
         }
     }
 
-    const decorada = base.map(p => ({ ...p, _livros: nomesLivros(p) }));
+    const decorada = base.map(p => {
+        const _livros = nomesLivros(p);
+        return decorarCamposBusca({ ...p, _livros }, _livros);
+    });
     let lista = filtrarTextos(decorada, filtroPoemas);
+
+    semDataPoemas = lista.filter(p =>
+        itemFaltaDataParaFiltro(p.dataEscrita, filtroDataEscritaPoemas) ||
+        itemFaltaDataParaFiltro(p.dataPublicacao, filtroDataPublicacaoPoemas)
+    ).length;
+
+    lista = lista.filter(p =>
+        itemBateFiltroData(p.dataEscrita, filtroDataEscritaPoemas) &&
+        itemBateFiltroData(p.dataPublicacao, filtroDataPublicacaoPoemas)
+    );
 
     if (ordenacaoPoemas === 'data-esc-desc' || ordenacaoPoemas === 'data-esc-asc') {
         const asc = ordenacaoPoemas === 'data-esc-asc';
@@ -344,6 +534,168 @@ export function removerSinalEmMassa() {
     });
 }
 
+// ─── Seleção múltipla de Prosas (ações em massa) ──────────────
+// Mesma lógica da seleção de Poemas acima, adaptada pra Prosas.
+
+// Retorna a lista de prosas atualmente visível (livro/coletânea +
+// busca já aplicados) — usada tanto pela renderização quanto pela
+// seleção em massa, pra ficarem sempre coerentes.
+function getListaVisivelProsas() {
+    let base = db.prosas;
+    if (filtroLivroProsa) {
+        const livroSel = db.livros.find(l => String(l.id) === String(filtroLivroProsa));
+        if (livroSel?.tipo === 'Coletânea') {
+            // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
+            const partesIds = new Set(
+                db.partes.filter(p => String(p.livroId) === String(filtroLivroProsa)).map(p => String(p.id))
+            );
+            const refIds = new Set(
+                (db.itensColetanea || [])
+                    .filter(i => partesIds.has(String(i.parteId)) && i.refTipo === 'prosa' && i.refId)
+                    .map(i => String(i.refId))
+            );
+            base = base.filter(pr => refIds.has(String(pr.id)));
+        } else {
+            base = base.filter(pr => String(livroDaProsa(pr)) === String(filtroLivroProsa));
+        }
+    }
+    const decorada = base.map(pr => decorarCamposBusca(pr));
+    let lista = filtrarTextos(decorada, filtroProsas);
+
+    semDataProsas = lista.filter(pr =>
+        itemFaltaDataParaFiltro(pr.dataEscrita, filtroDataEscritaProsas) ||
+        itemFaltaDataParaFiltro(pr.dataPublicacao, filtroDataPublicacaoProsas)
+    ).length;
+
+    lista = lista.filter(pr =>
+        itemBateFiltroData(pr.dataEscrita, filtroDataEscritaProsas) &&
+        itemBateFiltroData(pr.dataPublicacao, filtroDataPublicacaoProsas)
+    );
+    return lista;
+}
+
+export function toggleSelecaoProsa(checked, id) {
+    if (checked) selecaoProsas.add(id);
+    else selecaoProsas.delete(id);
+    atualizarBarraSelecaoProsas();
+}
+
+export function toggleSelecaoTodosProsas(checked) {
+    const visiveis = getListaVisivelProsas().map(pr => pr.id);
+    if (checked) visiveis.forEach(id => selecaoProsas.add(id));
+    else visiveis.forEach(id => selecaoProsas.delete(id));
+    renderProsas();
+}
+
+export function limparSelecaoProsas() {
+    selecaoProsas.clear();
+    renderProsas();
+}
+
+function atualizarBarraSelecaoProsas() {
+    const barra    = document.getElementById('barra-acoes-prosas');
+    const contador = document.getElementById('contador-selecao-prosas');
+    if (!barra) return;
+    if (selecaoProsas.size > 0) {
+        barra.classList.remove('hidden');
+        if (contador) contador.innerText = `${selecaoProsas.size} selecionada(s)`;
+    } else {
+        barra.classList.add('hidden');
+    }
+}
+
+export function aplicarPessoaEmMassaProsa() {
+    const input = document.getElementById('bulk-pessoa-input-prosa');
+    const nome  = (input?.value || '').trim();
+    if (!nome || selecaoProsas.size === 0) return;
+
+    const n = selecaoProsas.size;
+    abrirModalConfirmacao({
+        titulo: `Dedicar a "${nome}"`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai adicionar "${nome}" aos dedicados de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#e11d48',
+        onConfirmar: () => {
+            db.prosas.forEach(pr => {
+                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'pessoas', nome);
+            });
+            if (input) input.value = '';
+            selecaoProsas.clear();
+            save(); // dispara re-render via evento db:saved
+        }
+    });
+}
+
+export function removerPessoaEmMassaProsa() {
+    const input = document.getElementById('bulk-pessoa-input-prosa');
+    const nome  = (input?.value || '').trim();
+    if (!nome || selecaoProsas.size === 0) return;
+
+    const n = selecaoProsas.size;
+    abrirModalConfirmacao({
+        titulo: `Remover "${nome}"`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai remover "${nome}" dos dedicados de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        textoConfirmar: 'Remover',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            db.prosas.forEach(pr => {
+                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'pessoas', nome);
+            });
+            if (input) input.value = '';
+            selecaoProsas.clear();
+            save();
+        }
+    });
+}
+
+export function aplicarSinalEmMassaProsa() {
+    const input = document.getElementById('bulk-sinal-input-prosa');
+    const tag   = (input?.value || '').trim();
+    if (!tag || selecaoProsas.size === 0) return;
+
+    const n = selecaoProsas.size;
+    abrirModalConfirmacao({
+        titulo: `Marcar "${tag}"`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai adicionar a sinalização "${tag}" a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#2563eb',
+        onConfirmar: () => {
+            db.prosas.forEach(pr => {
+                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'sinalizacoes', tag);
+            });
+            if (input) input.value = '';
+            selecaoProsas.clear();
+            save();
+        }
+    });
+}
+
+export function removerSinalEmMassaProsa() {
+    const input = document.getElementById('bulk-sinal-input-prosa');
+    const tag   = (input?.value || '').trim();
+    if (!tag || selecaoProsas.size === 0) return;
+
+    const n = selecaoProsas.size;
+    abrirModalConfirmacao({
+        titulo: `Remover "${tag}"`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai remover a sinalização "${tag}" de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        textoConfirmar: 'Remover',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            db.prosas.forEach(pr => {
+                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'sinalizacoes', tag);
+            });
+            if (input) input.value = '';
+            selecaoProsas.clear();
+            save();
+        }
+    });
+}
+
 // ─── Livros ──────────────────────────────────────────────────
 
 // Troca a sequência do livro com a de seu vizinho (acima/abaixo na
@@ -377,23 +729,23 @@ export function renderLivros() {
     );
 
     container.innerHTML = ordenados.map(l => `
-        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
             ${l.capa
                 ? `<img data-capa-id="${l.capa}" src="" class="w-full h-32 object-cover rounded mb-4 opacity-0 transition-opacity duration-200">`
-                : `<div class="h-32 bg-gray-100 rounded mb-4"></div>`}
+                : `<div class="h-32 bg-gray-100 dark:bg-slate-700 rounded mb-4"></div>`}
             <div class="flex justify-between items-start">
-                <h4 class="font-bold text-blue-800">${escapeHtml(l.titulo)}</h4>
-                <span class="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded font-mono">SEQ: ${l.sequencia || '0'}</span>
+                <h4 class="font-bold text-blue-800 dark:text-blue-200">${escapeHtml(l.titulo)}</h4>
+                <span class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded font-mono">SEQ: ${l.sequencia || '0'}</span>
             </div>
-            <p class="text-xs font-mono text-gray-500">${escapeHtml(l.siglaOficial) || '---'} | ${l.data ? (typeof l.data === 'string' ? l.data : formatarDataParcial(l.data)) : 'S/D'}</p>
+            <p class="text-xs font-mono text-gray-500 dark:text-slate-400">${escapeHtml(l.siglaOficial) || '---'} | ${l.data ? (typeof l.data === 'string' ? l.data : formatarDataParcial(l.data)) : 'S/D'}</p>
             <div class="flex justify-between items-center mt-4">
                 <div class="flex gap-4">
-                    <button onclick="editarLivro(${l.id})" class="text-blue-600 text-xs font-bold uppercase">Editar</button>
+                    <button onclick="editarLivro(${l.id})" class="text-blue-600 dark:text-blue-400 text-xs font-bold uppercase">Editar</button>
                     <button onclick="deleteItem('livros', ${l.id})" class="text-red-400 text-xs uppercase">Excluir</button>
                 </div>
                 <div class="flex gap-1">
-                    <button onclick="moverLivro(${l.id}, 'up')" class="text-gray-400 hover:text-blue-600 px-1 text-xs" title="Subir">▲</button>
-                    <button onclick="moverLivro(${l.id}, 'down')" class="text-gray-400 hover:text-blue-600 px-1 text-xs" title="Descer">▼</button>
+                    <button onclick="moverLivro(${l.id}, 'up')" class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Subir">▲</button>
+                    <button onclick="moverLivro(${l.id}, 'down')" class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Descer">▼</button>
                 </div>
             </div>
         </div>`).join('');
@@ -423,17 +775,17 @@ export function renderPartes() {
     container.innerHTML = ordenadas.map(p => {
         const livro = db.livros.find(l => l.id == p.livroId);
         return `
-        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex justify-between items-center">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
             ${p.capa ? `<img data-capa-id="${p.capa}" src="" class="w-16 h-16 object-cover rounded mr-3 flex-shrink-0 opacity-0 transition-opacity duration-200">` : ''}
             <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-800">${escapeHtml(p.titulo)}</h4>
-                <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wider">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.titulo)}</h4>
+                <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
                     ${livro ? escapeHtml(livro.titulo) : 'Sem livro'}
                 </p>
-                <p class="text-[10px] text-gray-400 font-mono">SEQ: ${p.sequencia || '0'}</p>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">SEQ: ${p.sequencia || '0'}</p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
-                <button onclick="editarParte(${p.id})" class="text-blue-600 text-xs uppercase font-bold">Editar</button>
+                <button onclick="editarParte(${p.id})" class="text-blue-600 dark:text-blue-400 text-xs uppercase font-bold">Editar</button>
                 <button onclick="deleteItem('partes', ${p.id})" class="text-red-400 text-xs uppercase">Excluir</button>
             </div>
         </div>`;
@@ -480,18 +832,18 @@ export function renderSecoes() {
             ? db.livros.find(l => l.id == s.paiId)
             : db.partes.find(p => p.id == s.paiId);
         return `
-        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            ${s.capa ? `<img data-capa-id="${s.capa}" src="" class="w-full h-24 object-cover rounded mb-3 border opacity-0 transition-opacity duration-200">` : ''}
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+            ${s.capa ? `<img data-capa-id="${s.capa}" src="" class="w-full h-24 object-cover rounded mb-3 border opacity-0 transition-opacity duration-200 border-gray-300 dark:border-slate-600">` : ''}
             <div class="flex justify-between items-center">
                 <div>
-                    <h4 class="font-bold text-gray-800">${escapeHtml(s.titulo)}</h4>
-                    <p class="text-[10px] text-blue-600 uppercase font-bold tracking-wider">
+                    <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(s.titulo)}</h4>
+                    <p class="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-bold tracking-wider">
                         ${s.paiTipo}: ${pai ? escapeHtml(pai.titulo) : '---'}
                     </p>
-                    <p class="text-[10px] text-gray-400">POSIÇÃO: ${s.sequencia ?? '—'}</p>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500">POSIÇÃO: ${s.sequencia ?? '—'}</p>
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="editarSecao(${s.id})" class="text-blue-600 text-xs uppercase font-bold">Editar</button>
+                    <button onclick="editarSecao(${s.id})" class="text-blue-600 dark:text-blue-400 text-xs uppercase font-bold">Editar</button>
                     <button onclick="deleteItem('secoes', ${s.id})" class="text-red-400 text-xs uppercase">Excluir</button>
                 </div>
             </div>
@@ -520,49 +872,77 @@ export function renderPoemas() {
     }
 
     const listaFiltrada = getListaVisivelPoemas();
-
-    const masterCheckbox = document.getElementById('check-todos-poemas');
-    if (masterCheckbox) {
-        masterCheckbox.checked = listaFiltrada.length > 0 && listaFiltrada.every(p => selecaoPoemas.has(p.id));
-    }
+    atualizarAvisoSemData('aviso-sem-data-poemas', semDataPoemas);
     atualizarBarraSelecao();
 
+    const colunasAtivas = getColunasAtivas('poemas');
+    atualizarPainelColunas('poemas', 'painel-colunas-poemas');
+
+    const cabecalho = document.getElementById('cabecalho-poemas');
+    if (cabecalho) {
+        cabecalho.innerHTML = montarCabecalho(
+            'poemas',
+            `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700"><input type="checkbox" id="check-todos-poemas" onclick="toggleSelecaoTodosPoemas(this.checked)"></th>`,
+            `<th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>`,
+            `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`
+        );
+        // O checkbox mestre é recriado a cada render do cabeçalho — reaplica o estado
+        const novoMaster = document.getElementById('check-todos-poemas');
+        if (novoMaster) novoMaster.checked = listaFiltrada.length > 0 && listaFiltrada.every(p => selecaoPoemas.has(p.id));
+    }
+
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400 text-sm">Nenhum poema encontrado.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhum poema encontrado.</td></tr>`;
         return;
     }
 
+    const CELULAS_POEMAS = {
+        dataEscrita: (p) => {
+            const aproximada = !!(p.dataEscrita && !p.dataEscrita.exata);
+            const dicas = [];
+            if (aproximada) dicas.push('Data aproximada — sem certeza de que é exatamente essa');
+            if (p.dataPublicacao) dicas.push('Publicação: ' + formatarDataParcial(p.dataPublicacao));
+            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono" title="${dicas.join(' · ')}">${aproximada ? '<span class="text-amber-500 dark:text-amber-400">~</span> ' : ''}${p.dataEscrita ? formatarDataParcial(p.dataEscrita) : (p.ano || '—')}</td>`;
+        },
+        estrutura: (p) => {
+            const paiObjeto = p.paiTipo === 'secao'
+                ? db.secoes.find(s => s.id == p.paiId)
+                : p.paiTipo === 'parte'
+                    ? db.partes.find(pt => pt.id == p.paiId)
+                    : db.livros.find(l => l.id == p.paiId);
+            let infoPai = "Avulso";
+            if (paiObjeto) {
+                const rotulo = p.paiTipo === 'secao' ? 'SEC' : p.paiTipo === 'parte' ? 'PART' : 'LIVRO';
+                infoPai = `${escapeHtml(paiObjeto.titulo)} [${rotulo}]`;
+            }
+            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${infoPai}</td>`;
+        },
+        status: (p) => `<td class="p-4">${p.publicado ? '🟢' : '⚪'}</td>`,
+        dataPublicacao: (p) => `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${p.dataPublicacao ? formatarDataParcial(p.dataPublicacao) : '—'}</td>`,
+        elos: (p) => `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${titulosPoemasPorId(p.conceitos?.elos)}</td>`,
+        referencias: (p) => `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${titulosPoemasPorId(p.conceitos?.referencias)}</td>`,
+        etiquetas: (p) => `<td class="p-4">${badgesEtiquetas(p.sinalizacoes)}</td>`,
+        notas: (p) => `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
+    };
+
     container.innerHTML = listaFiltrada.map(p => {
-        const paiObjeto = p.paiTipo === 'secao'
-            ? db.secoes.find(s => s.id == p.paiId)
-            : p.paiTipo === 'parte'
-                ? db.partes.find(pt => pt.id == p.paiId)
-                : db.livros.find(l => l.id == p.paiId);
-
-        let infoPai = "Avulso";
-        if (paiObjeto) {
-            const rotulo = p.paiTipo === 'secao' ? 'SEC' : p.paiTipo === 'parte' ? 'PART' : 'LIVRO';
-            infoPai = `${escapeHtml(paiObjeto.titulo)} [${rotulo}]`;
-        }
-
+        const celulasMeio = colunasAtivas.map(key => CELULAS_POEMAS[key] ? CELULAS_POEMAS[key](p) : '').join('');
         return `
-        <tr class="border-b hover:bg-blue-50/50">
+        <tr class="border-b hover:bg-blue-50/50 dark:hover:bg-blue-950/50 border-gray-200 dark:border-slate-700">
             <td class="p-4">
                 <input type="checkbox" class="check-poema" ${selecaoPoemas.has(p.id) ? 'checked' : ''}
                     onclick="toggleSelecaoPoema(this.checked, ${p.id})">
             </td>
-            <td class="p-4 font-bold text-gray-700">
+            <td class="p-4 font-bold text-gray-700 dark:text-slate-200">
                 <span class="text-[10px] text-blue-400 mr-2">${p.sequencia ?? '—'}</span>
                 ${escapeHtml(p.titulo)}
-                ${p._livros ? `<div class="text-[10px] text-indigo-500 font-normal mt-1">Livros: ${escapeHtml(p._livros)}</div>` : ''}
-                ${p.pessoas ? `<div class="text-[10px] text-rose-500 font-normal mt-1">Dedicado a: ${escapeHtml(p.pessoas)}</div>` : ''}
+                ${p._livros ? `<div class="text-[10px] text-indigo-500 dark:text-indigo-400 font-normal mt-1">Livros: ${escapeHtml(p._livros)}</div>` : ''}
+                ${p.pessoas ? `<div class="text-[10px] text-rose-500 dark:text-rose-400 font-normal mt-1">Dedicado a: ${escapeHtml(p.pessoas)}</div>` : ''}
             </td>
-            <td class="p-4 text-xs text-gray-400 font-mono" title="${p.dataPublicacao ? 'Publicação: ' + formatarDataParcial(p.dataPublicacao) : ''}">${p.dataEscrita ? formatarDataParcial(p.dataEscrita) : (p.ano || '—')}</td>
-            <td class="p-4 text-xs text-gray-400">${infoPai}</td>
-            <td class="p-4">${p.publicado ? '🟢' : '⚪'}</td>
+            ${celulasMeio}
             <td class="p-4 text-right space-x-2">
-                <button onclick="editarPoema(${p.id})" class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-bold uppercase hover:bg-blue-200">Editar</button>
-                <button onclick="deleteItem('poemas', ${p.id})" class="text-red-400 text-xs uppercase hover:text-red-600">Excluir</button>
+                <button onclick="editarPoema(${p.id})" class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 py-1 rounded text-xs font-bold uppercase hover:bg-blue-200 dark:hover:bg-blue-800">Editar</button>
+                <button onclick="deleteItem('poemas', ${p.id})" class="text-red-400 text-xs uppercase hover:text-red-600 dark:hover:text-red-400">Excluir</button>
             </td>
         </tr>`;
     }).join('');
@@ -587,61 +967,75 @@ export function renderProsas() {
         if (Array.from(filtroSelPr.options).some(o => o.value === valorAtual)) filtroSelPr.value = valorAtual;
     }
 
-    let lista = db.prosas;
-    if (filtroLivroProsa) {
-        const livroSel = db.livros.find(l => String(l.id) === String(filtroLivroProsa));
-        if (livroSel?.tipo === 'Coletânea') {
-            // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
-            const partesIds = new Set(
-                db.partes.filter(p => String(p.livroId) === String(filtroLivroProsa)).map(p => String(p.id))
-            );
-            const refIds = new Set(
-                (db.itensColetanea || [])
-                    .filter(i => partesIds.has(String(i.parteId)) && i.refTipo === 'prosa' && i.refId)
-                    .map(i => String(i.refId))
-            );
-            lista = lista.filter(pr => refIds.has(String(pr.id)));
-        } else {
-            lista = lista.filter(pr => String(livroDaProsa(pr)) === String(filtroLivroProsa));
-        }
+    const listaFiltrada = getListaVisivelProsas();
+    atualizarAvisoSemData('aviso-sem-data-prosas', semDataProsas);
+    atualizarBarraSelecaoProsas();
+
+    const colunasAtivas = getColunasAtivas('prosas');
+    atualizarPainelColunas('prosas', 'painel-colunas-prosas');
+
+    const cabecalho = document.getElementById('cabecalho-prosas');
+    if (cabecalho) {
+        cabecalho.innerHTML = montarCabecalho(
+            'prosas',
+            `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700"><input type="checkbox" id="check-todos-prosas" onclick="toggleSelecaoTodosProsas(this.checked)"></th>`,
+            `<th class="p-4 border-b border-gray-200 dark:border-slate-700">Título</th>`,
+            `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`
+        );
+        const novoMaster = document.getElementById('check-todos-prosas');
+        if (novoMaster) novoMaster.checked = listaFiltrada.length > 0 && listaFiltrada.every(pr => selecaoProsas.has(pr.id));
     }
-    const listaFiltrada = filtrarTextos(lista, filtroProsas);
 
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 text-sm">Nenhuma prosa encontrada.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhuma prosa encontrada.</td></tr>`;
         return;
     }
 
-    container.innerHTML = listaFiltrada.map(pr => {
-        let paiObjeto = null, rotulo = 'Avulso';
-        if (pr.paiTipo === 'secao')       { paiObjeto = db.secoes.find(s => s.id == pr.paiId); rotulo = 'SEC'; }
-        else if (pr.paiTipo === 'parte')  { paiObjeto = db.partes.find(p => p.id == pr.paiId); rotulo = 'PART'; }
-        else if (pr.paiTipo === 'livro')  { paiObjeto = db.livros.find(l => l.id == pr.paiId); rotulo = 'LIVRO'; }
+    const CELULAS_PROSAS = {
+        dataEscrita: (pr) => {
+            const aproximada = !!(pr.dataEscrita && !pr.dataEscrita.exata);
+            const dicas = [];
+            if (aproximada) dicas.push('Data aproximada — sem certeza de que é exatamente essa');
+            if (pr.dataPublicacao) dicas.push('Publicação: ' + formatarDataParcial(pr.dataPublicacao));
+            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono" title="${dicas.join(' · ')}">${aproximada ? '<span class="text-amber-500 dark:text-amber-400">~</span> ' : ''}${pr.dataEscrita ? formatarDataParcial(pr.dataEscrita) : (pr.ano || '—')}</td>`;
+        },
+        vinculo: (pr) => {
+            let paiObjeto = null, rotulo = 'Avulso';
+            if (pr.paiTipo === 'secao')       { paiObjeto = db.secoes.find(s => s.id == pr.paiId); rotulo = 'SEC'; }
+            else if (pr.paiTipo === 'parte')  { paiObjeto = db.partes.find(p => p.id == pr.paiId); rotulo = 'PART'; }
+            else if (pr.paiTipo === 'livro')  { paiObjeto = db.livros.find(l => l.id == pr.paiId); rotulo = 'LIVRO'; }
+            const infoVinc = paiObjeto ? `${escapeHtml(paiObjeto.titulo)} [${rotulo}]` : 'Sem vínculo';
+            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${infoVinc}</td>`;
+        },
+        dataPublicacao: (pr) => `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${pr.dataPublicacao ? formatarDataParcial(pr.dataPublicacao) : '—'}</td>`,
+        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetas(pr.sinalizacoes)}</td>`,
+        notas: (pr) => `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.notas)}</td>`,
+    };
 
-        const infoVinc = paiObjeto ? `${escapeHtml(paiObjeto.titulo)} [${rotulo}]` : 'Sem vínculo';
+    container.innerHTML = listaFiltrada.map(pr => {
         const pubBadge = pr.publicado
-            ? `<span class="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold uppercase">pub</span>`
-            : '';
-        const tags = pr.sinalizacoes
-            ? pr.sinalizacoes.split(',').map(t => t.trim()).filter(Boolean)
-                .map(t => `<span class="text-[9px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">${escapeHtml(t)}</span>`).join('')
+            ? `<span class="text-[9px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold uppercase">pub</span>`
             : '';
         const pessoas = pr.pessoas
             ? pr.pessoas.split(',').map(p => p.trim()).filter(Boolean)
-                .map(p => `<span class="text-[9px] bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded">${escapeHtml(p)}</span>`).join('')
+                .map(p => `<span class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded">${escapeHtml(p)}</span>`).join('')
             : '';
+        const celulasMeio = colunasAtivas.map(key => CELULAS_PROSAS[key] ? CELULAS_PROSAS[key](pr) : '').join('');
 
         return `
-        <tr class="border-b hover:bg-blue-50/50">
+        <tr class="border-b hover:bg-blue-50/50 dark:hover:bg-blue-950/50 border-gray-200 dark:border-slate-700">
             <td class="p-4">
-                <div class="font-bold text-gray-700 flex items-center gap-2">${escapeHtml(pr.titulo)} ${pubBadge}</div>
-                <div class="flex flex-wrap gap-1 mt-1">${tags}${pessoas}</div>
+                <input type="checkbox" class="check-prosa" ${selecaoProsas.has(pr.id) ? 'checked' : ''}
+                    onclick="toggleSelecaoProsa(this.checked, ${pr.id})">
             </td>
-            <td class="p-4 text-xs text-gray-400 font-mono" title="${pr.dataPublicacao ? 'Publicação: ' + formatarDataParcial(pr.dataPublicacao) : ''}">${pr.dataEscrita ? formatarDataParcial(pr.dataEscrita) : (pr.ano || '—')}</td>
-            <td class="p-4 text-xs text-gray-400">${infoVinc}</td>
+            <td class="p-4">
+                <div class="font-bold text-gray-700 dark:text-slate-200 flex items-center gap-2">${escapeHtml(pr.titulo)} ${pubBadge}</div>
+                ${pessoas ? `<div class="flex flex-wrap gap-1 mt-1">${pessoas}</div>` : ''}
+            </td>
+            ${celulasMeio}
             <td class="p-4 text-right space-x-2">
-                <button onclick="editarProsa(${pr.id})" class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-bold uppercase hover:bg-blue-200">Editar</button>
-                <button onclick="deleteItem('prosas', ${pr.id})" class="text-red-400 text-xs uppercase hover:text-red-600">Excluir</button>
+                <button onclick="editarProsa(${pr.id})" class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 py-1 rounded text-xs font-bold uppercase hover:bg-blue-200 dark:hover:bg-blue-800">Editar</button>
+                <button onclick="deleteItem('prosas', ${pr.id})" class="text-red-400 text-xs uppercase hover:text-red-600 dark:hover:text-red-400">Excluir</button>
             </td>
         </tr>`;
     }).join('');
@@ -674,25 +1068,25 @@ export function renderElementos() {
             : db.secoes.find(s => s.id == el.paiId);
 
         return `
-        <div class="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col h-full">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
             <div class="flex justify-between items-start mb-2">
-                <span class="text-[10px] bg-gray-100 px-2 py-1 rounded uppercase font-bold text-gray-500">${el.tipo}</span>
+                <span class="text-[10px] bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded uppercase font-bold text-gray-500 dark:text-slate-400">${el.tipo}</span>
                 <div class="flex gap-2">
-                    <button onclick="editarElemento(${el.id})" class="text-blue-600 text-xs">Editar</button>
+                    <button onclick="editarElemento(${el.id})" class="text-blue-600 dark:text-blue-400 text-xs">Editar</button>
                     <button onclick="deleteItem('elementos', ${el.id})" class="text-red-400 text-xs">Excluir</button>
                 </div>
             </div>
-            ${el.titulo ? `<p class="text-sm font-semibold text-gray-700 mt-1 mb-1">${escapeHtml(el.titulo)}</p>` : ''}
-            ${el.imagem ? `<img src="${el.imagem}" class="w-full h-24 object-cover rounded mb-2 border">` : ''}
-            <p class="text-sm text-gray-600 line-clamp-3 italic mb-auto" style="white-space: pre-line;">${el.texto || '(Sem texto)'}</p>
+            ${el.titulo ? `<p class="text-sm font-semibold text-gray-700 dark:text-slate-200 mt-1 mb-1">${escapeHtml(el.titulo)}</p>` : ''}
+            ${el.imagem ? `<img src="${el.imagem}" class="w-full h-24 object-cover rounded mb-2 border border-gray-300 dark:border-slate-600">` : ''}
+            <p class="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 italic mb-auto" style="white-space: pre-line;">${el.texto ? sanitizarTextoRico(el.texto) : '(Sem texto)'}</p>
             ${el.notas ? `
-                <div class="mt-2 p-2 bg-amber-50 border-l-2 border-amber-200 text-[10px] text-amber-700 italic">
+                <div class="mt-2 p-2 bg-amber-50 dark:bg-amber-950 border-l-2 border-amber-200 dark:border-amber-800 text-[10px] text-amber-700 dark:text-amber-300 italic">
                     <strong class="uppercase">Nota:</strong>
                     <span class="line-clamp-2">${escapeHtml(el.notas)}</span>
                 </div>` : ''}
-            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-50">
-                <p class="text-[10px] text-blue-500 font-bold uppercase">Vínculo: ${pai ? escapeHtml(pai.titulo) : '---'}</p>
-                <span class="text-[9px] font-mono text-gray-300">#${el.sequencia ?? '—'}</span>
+            <div class="flex justify-between items-center mt-3 pt-2 border-t border-gray-50 dark:border-slate-800">
+                <p class="text-[10px] text-blue-500 dark:text-blue-400 font-bold uppercase">Vínculo: ${pai ? escapeHtml(pai.titulo) : '---'}</p>
+                <span class="text-[9px] font-mono text-gray-300 dark:text-slate-600">#${el.sequencia ?? '—'}</span>
             </div>
         </div>`;
     }).join('');

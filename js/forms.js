@@ -6,7 +6,16 @@ import { db, save }           from './db.js';
 import { toBase64, reordenarPosicao, fecharEspaco,
          getIrmaosTopoLivro, getIrmaosPorEscopo,
          lerDataParcial, preencherDataParcial,
-         seqOuNull, gerarId, escapeHtml, mostrarAviso } from './utils.js';
+         seqOuNull, gerarId, escapeHtml, mostrarAviso,
+         criarRastreadorDeAlteracoes } from './utils.js';
+
+// Rastreadores de alterações não salvas dos formulários de texto longo
+// (ver toggleModal em modais.js — confirma antes de fechar se sujo).
+// Instanciados aqui (não em utils.js) porque quem sabe quando salvar
+// terminou — e portanto quando "limpar" — é o submit handler de cada
+// formulário, que mora neste módulo.
+export const rastreadorPoema = criarRastreadorDeAlteracoes();
+export const rastreadorProsa = criarRastreadorDeAlteracoes();
 import { salvarCapa, deletarCapa } from './capas.js';
 import { getColetaneasDeItem } from './coletaneas.js';
 import { toggleModal, garantirModal,
@@ -32,7 +41,7 @@ function renderColetaneasInfo(containerId, refTipo, refId) {
     if (!el) return;
     const lista = getColetaneasDeItem(refTipo, refId);
     el.innerHTML = lista.length
-        ? `<div class="text-[11px] bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-lg px-3 py-2 mt-1">
+        ? `<div class="text-[11px] bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-lg px-3 py-2 mt-1">
               📚 Aparece em: ${lista.map(c => `<strong>${escapeHtml(c.coletaneaTitulo)}</strong> › ${escapeHtml(c.parteTitulo)}`).join(' &nbsp;·&nbsp; ')}
            </div>`
         : '';
@@ -241,6 +250,8 @@ export function initFormPoema() {
     const form = document.getElementById('form-poema');
     if (!form) return;
 
+    rastreadorPoema.observar(form);
+
     form.onsubmit = (e) => {
         e.preventDefault();
 
@@ -257,6 +268,10 @@ export function initFormPoema() {
 
         const dataEscrita    = lerDataParcial('p-data-esc');
         const dataPublicacao = lerDataParcial('p-data-pub');
+        // Metadados de arquivo (Word etc.) frequentemente dão só uma data
+        // aproximada, ou selecionada por contexto — a maioria do acervo
+        // é assim, por isso o padrão é "não exata" (ver colunas.js/render-listas.js).
+        if (dataEscrita) dataEscrita.exata = document.getElementById('p-data-esc-exata').checked;
 
         const dados = {
             id,
@@ -299,6 +314,7 @@ export function initFormPoema() {
         }
 
         save();
+        rastreadorPoema.marcarLimpo();
         toggleModal('modal-poema');
     };
 }
@@ -317,6 +333,7 @@ export async function editarPoema(id) {
     document.getElementById('p-sequencia').value   = p.sequencia || '';
     preencherDataParcial('p-data-esc', p.dataEscrita);
     preencherDataParcial('p-data-pub', p.dataPublicacao);
+    document.getElementById('p-data-esc-exata').checked = !!p.dataEscrita?.exata;
     document.getElementById('p-notas').value       = p.notas || '';
     sincronizarFiltroDestino('p-destino-filtro', 'p-destino',
         (p.paiTipo && p.paiId) ? `${p.paiTipo}:${p.paiId}` : '');
@@ -346,6 +363,8 @@ export function initFormProsa() {
     const form = document.getElementById('form-prosa');
     if (!form) return;
 
+    rastreadorProsa.observar(form);
+
     form.onsubmit = (e) => {
         e.preventDefault();
 
@@ -362,6 +381,7 @@ export function initFormProsa() {
 
         const dataEscrita    = lerDataParcial('pr-data-esc');
         const dataPublicacao = lerDataParcial('pr-data-pub');
+        if (dataEscrita) dataEscrita.exata = document.getElementById('pr-data-esc-exata').checked;
 
         const dados = {
             id,
@@ -399,6 +419,7 @@ export function initFormProsa() {
         }
 
         save();
+        rastreadorProsa.marcarLimpo();
         toggleModal('modal-prosa');
         resetTagsProsa();
         resetPessoasProsa();
@@ -418,6 +439,7 @@ export async function editarProsa(id) {
     document.getElementById('pr-sequencia').value   = pr.sequencia || 0;
     preencherDataParcial('pr-data-esc', pr.dataEscrita);
     preencherDataParcial('pr-data-pub', pr.dataPublicacao);
+    document.getElementById('pr-data-esc-exata').checked = !!pr.dataEscrita?.exata;
 
     const destinoStr = (pr.paiTipo && pr.paiId)
         ? `${pr.paiTipo}:${pr.paiId}`

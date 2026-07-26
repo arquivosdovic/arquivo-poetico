@@ -327,6 +327,18 @@ export async function prepararNovo(tipo) {
     toggleModal(`modal-${tipo}`);
 }
 
+// Toggle genérico pra painéis recolhíveis (ex.: filtro de data em
+// Poemas/Prosas) — mostra/esconde por id e atualiza o rótulo do botão
+// que o abriu (▾ fechado / ▴ aberto), se o botão for passado.
+export function togglePainel(painelId, botaoEl = null) {
+    const painel = document.getElementById(painelId);
+    if (!painel) return;
+    const aberto = painel.classList.toggle('hidden') === false;
+    if (botaoEl) {
+        botaoEl.textContent = botaoEl.textContent.replace(/[▾▴]/, aberto ? '▴' : '▾');
+    }
+}
+
 export function toggleCamposIntroducao() {
     const tipo = document.getElementById('el-tipo')?.value;
     const box  = document.getElementById('campos-introducao');

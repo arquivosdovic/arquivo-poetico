@@ -94,3 +94,45 @@ input[type="search"]::-webkit-search-cancel-button {
 .hidden {
     display: none !important;
 }
+
+/* --- Modo Escuro (ver js/theme.js) ---
+   Regras daqui são só pro que não é utilitário Tailwind (esses ganham dark:
+   direto na classe, no HTML/JS). Aqui: color-scheme nativo (scrollbar do SO,
+   date/time picker, checkbox) e o que já era CSS puro antes do modo escuro. */
+html.dark {
+    color-scheme: dark;
+}
+
+html.dark .form-label {
+    color: #94a3b8;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+    color: #64748b;
+}
+
+html.dark .table-container {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+html.dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}

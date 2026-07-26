@@ -7,7 +7,20 @@
     <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
     <link rel="apple-touch-icon" href="assets/icons/favicon-180.png">
+    <script>
+        // Aplica o tema ANTES do primeiro paint, igual ao index.html — evita
+        // piscar claro e depois escurecer. Lógica de tema completa mais abaixo,
+        // já que esta página não usa ES Modules e não importa js/theme.js.
+        (function () {
+            var pref = localStorage.getItem('arquivoPoetico_tema') || 'auto';
+            var escuro = pref === 'escuro' || (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            if (escuro) document.documentElement.classList.add('dark');
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' };
+    </script>
     <style>
         :root {
             --color-accent: #1d4ed8;
@@ -46,26 +59,60 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+        /* --- Modo Escuro (mesma chave de localStorage do index.html) --- */
+        html.dark { color-scheme: dark; }
+
+        html.dark .tab-btn { color: #94a3b8; }
+        html.dark .tab-btn:hover { color: #60a5fa; }
+        html.dark .tab-btn.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
+        html.dark .card { background: #1e293b; border-color: #334155; }
+
+        html.dark .badge-warn  { background: #451a03; color: #fbbf24; }
+        html.dark .badge-danger { background: #450a0a; color: #fca5a5; }
+        html.dark .badge-ok    { background: #052e16; color: #86efac; }
+        html.dark .badge-neutral { background: #334155; color: #cbd5e1; }
+
+        html.dark .diff-old { background: #450a0a; color: #fca5a5; }
+        html.dark .diff-new  { background: #052e16; color: #86efac; }
+
+        html.dark input, html.dark select, html.dark textarea {
+            background-color: #1e293b;
+            border-color: #334155;
+            color: #e2e8f0;
+        }
+        html.dark input::placeholder, html.dark textarea::placeholder { color: #64748b; }
+
+        html.dark ::-webkit-scrollbar-thumb { background: #475569; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans pb-24 min-h-screen">
+<body class="bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-sans pb-24 min-h-screen">
 
 <!-- ── HEADER ─────────────────────────────────────────────────── -->
-<header class="bg-white border-b shadow-sm p-5 mb-8 sticky top-0 z-30">
+<header class="bg-white dark:bg-slate-900 border-b shadow-sm p-5 mb-8 sticky top-0 z-30 border-gray-200 dark:border-slate-700">
     <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
         <div>
             <h1 class="text-xl font-light tracking-tight">
-                Arquivo <span class="font-bold text-blue-700">Poético</span>
-                <span class="text-gray-400 font-light ml-2">— Versões Alternativas</span>
+                Arquivo <span class="font-bold text-blue-700 dark:text-blue-300">Poético</span>
+                <span class="text-gray-400 dark:text-slate-500 font-light ml-2">— Versões Alternativas</span>
             </h1>
-            <p class="text-xs text-gray-400 mt-0.5">
+            <p class="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
                 Cadastre versões alternativas de textos sensíveis para exportar com segurança para uma IA
             </p>
         </div>
-        <a href="index.html"
-           class="text-sm text-blue-600 border border-blue-200 px-3 py-1.5 rounded-md hover:bg-blue-50 transition">
-            ← Voltar ao Arquivo
-        </a>
+        <div class="flex items-center gap-3">
+            <div class="relative">
+                <button id="btn-tema" type="button" onclick="togglePainelTema()"
+                    class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium">🌓 Tema</button>
+                <div id="painel-tema"
+                    class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 z-20"></div>
+            </div>
+            <a href="index.html"
+               class="text-sm text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 transition">
+                ← Voltar ao Arquivo
+            </a>
+        </div>
     </div>
 </header>
 
@@ -77,19 +124,18 @@
             <div class="text-3xl">📂</div>
             <div class="flex-1">
                 <h2 class="font-semibold text-lg mb-1">1. Carregue o backup do acervo</h2>
-                <p class="text-sm text-gray-500 mb-4">
-                    Suba o <code class="bg-gray-100 px-1 rounded text-xs">arquivo_poetico_backup.json</code> exportado
+                <p class="text-sm text-gray-500 dark:text-slate-400 mb-4">
+                    Suba o <code class="bg-gray-100 dark:bg-slate-700 px-1 rounded text-xs">arquivo_poetico_backup.json</code> exportado
                     pelo Arquivo Poético. Nenhum dado é enviado para servidor — tudo roda no navegador.
                 </p>
                 <div id="drop-zone"
-                     class="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer
-                            hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                     class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950 transition-colors"
                      onclick="document.getElementById('input-json').click()"
                      ondragover="event.preventDefault(); this.classList.add('border-blue-400','bg-blue-50')"
                      ondragleave="this.classList.remove('border-blue-400','bg-blue-50')"
                      ondrop="handleDrop(event)">
                     <div class="text-4xl mb-2">🗂️</div>
-                    <p class="text-gray-500 text-sm">Arraste o arquivo aqui ou <span class="text-blue-600 font-medium">clique para escolher</span></p>
+                    <p class="text-gray-500 dark:text-slate-400 text-sm">Arraste o arquivo aqui ou <span class="text-blue-600 dark:text-blue-400 font-medium">clique para escolher</span></p>
                     <input type="file" id="input-json" accept=".json" class="hidden" onchange="carregarJSON(event)">
                 </div>
                 <div id="upload-status" class="hidden mt-3 text-sm font-medium"></div>
@@ -101,24 +147,24 @@
     <section class="card p-6 mb-6">
         <h2 class="font-semibold mb-1 flex items-center gap-2">
             💾 Banco de versões filtradas
-            <span class="text-xs font-normal text-gray-400">(persiste entre sessões e uploads)</span>
+            <span class="text-xs font-normal text-gray-400 dark:text-slate-500">(persiste entre sessões e uploads)</span>
         </h2>
-        <p class="text-xs text-gray-500 mb-4">
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">
             As versões que você cadastra ficam salvas no navegador, vinculadas ao item original. Ao subir um novo
             JSON, elas são reaplicadas automaticamente. Use os botões abaixo para fazer backup ou migrar para outro dispositivo.
         </p>
         <div class="flex flex-wrap items-center gap-3">
-            <span id="contador-banco" class="text-xs text-gray-500 font-medium bg-gray-100 px-3 py-1.5 rounded-full">banco vazio</span>
+            <span id="contador-banco" class="text-xs text-gray-500 dark:text-slate-400 font-medium bg-gray-100 dark:bg-slate-700 px-3 py-1.5 rounded-full">banco vazio</span>
             <button onclick="exportarBanco()"
-                    class="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition">
+                    class="text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition">
                 ⬇ Exportar banco
             </button>
-            <label class="text-sm border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition cursor-pointer">
+            <label class="text-sm border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition cursor-pointer">
                 ⬆ Importar banco
                 <input type="file" accept=".json" class="hidden" onchange="importarBanco(event)">
             </label>
             <button onclick="limparBanco()"
-                    class="text-sm text-red-400 hover:text-red-600 transition text-xs ml-auto">
+                    class="text-sm text-red-400 hover:text-red-600 dark:hover:text-red-400 transition text-xs ml-auto">
                 Limpar banco
             </button>
         </div>
@@ -129,22 +175,22 @@
 
     <!-- Banner de reconhecimento automático (aparece após upload) -->
     <div id="banner-reconhecimento"
-         class="hidden mb-6 bg-green-50 border border-green-200 text-green-800 text-sm rounded-xl px-5 py-3 font-medium">
+         class="hidden mb-6 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 text-sm rounded-xl px-5 py-3 font-medium">
     </div>
 
     <!-- ── TAGS CONFIGURÁVEIS ──────────────────────────────────── -->
     <section id="sec-tags" class="card p-6 mb-6 hidden">
         <h2 class="font-semibold mb-3 flex items-center gap-2">
             🏷️ Tags que identificam textos sensíveis
-            <span class="text-xs font-normal text-gray-400">(edite conforme necessário)</span>
+            <span class="text-xs font-normal text-gray-400 dark:text-slate-500">(edite conforme necessário)</span>
         </h2>
         <div class="flex flex-wrap gap-2 mb-3" id="lista-tags-filtro"></div>
         <div class="flex gap-2">
             <input id="input-nova-tag" type="text" placeholder="Adicionar tag..."
-                   class="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                   class="border border-gray-300 dark:border-slate-600 rounded-md px-3 py-1.5 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
                    onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarTagFiltro()}">
             <button onclick="adicionarTagFiltro()"
-                    class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1.5 rounded-md transition">
+                    class="bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 text-gray-700 dark:text-slate-200 text-sm px-3 py-1.5 rounded-md transition">
                 + Adicionar
             </button>
         </div>
@@ -164,20 +210,20 @@
     <section id="sec-exportar" class="hidden">
         <div class="card p-6">
             <h2 class="font-semibold text-lg mb-1">3. Exportar JSON com substituições</h2>
-            <p class="text-sm text-gray-500 mb-4">
+            <p class="text-sm text-gray-500 dark:text-slate-400 mb-4">
                 O arquivo exportado é uma cópia do backup original com os textos substituídos pelas versões filtradas
                 cadastradas acima. Textos sem versão filtrada são mantidos como estão.
             </p>
 
-            <div id="resumo-exportacao" class="bg-gray-50 rounded-lg px-4 py-3 mb-4 text-sm text-gray-600"></div>
+            <div id="resumo-exportacao" class="bg-gray-50 dark:bg-slate-800 rounded-lg px-4 py-3 mb-4 text-sm text-gray-600 dark:text-slate-300"></div>
 
             <div class="flex flex-wrap gap-3">
                 <button onclick="exportarFiltrado()"
-                        class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition font-medium text-sm shadow">
+                        class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-500 transition font-medium text-sm shadow">
                     ⬇ Baixar JSON filtrado
                 </button>
                 <button onclick="exportarFiltrado(true)"
-                        class="border border-gray-300 text-gray-600 px-5 py-2.5 rounded-lg hover:bg-gray-50 transition text-sm">
+                        class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-5 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm">
                     ⬇ Baixar só os textos filtrados
                 </button>
             </div>
@@ -194,16 +240,15 @@
     <!-- Painel -->
     <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
         <div id="modal-painel"
-             class="editor-panel pointer-events-auto bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh]
-                    overflow-y-auto flex flex-col">
+             class="editor-panel pointer-events-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
 
-            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
+            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white dark:bg-slate-900 z-10 border-gray-200 dark:border-slate-700">
                 <div>
                     <div id="modal-tipo-badge" class="badge badge-neutral mb-1.5"></div>
                     <h3 id="modal-titulo" class="font-bold text-lg leading-tight"></h3>
                     <div id="modal-tags-orig" class="flex flex-wrap gap-1 mt-1.5"></div>
                 </div>
-                <button onclick="fecharModal()" class="text-gray-400 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
+                <button onclick="fecharModal()" class="text-gray-400 dark:text-slate-500 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
             </div>
 
             <div class="p-6 space-y-5 flex-1">
@@ -211,37 +256,33 @@
                 <!-- Texto original (colapsável) -->
                 <div>
                     <button onclick="toggleOriginal()"
-                            class="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1 hover:text-gray-700 mb-2"
+                            class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide flex items-center gap-1 hover:text-gray-700 mb-2"
                             id="btn-toggle-original">
                         <span id="seta-original">▶</span> Texto original
                     </button>
                     <div id="bloco-original" class="hidden">
                         <div id="modal-texto-original"
-                             class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm whitespace-pre-wrap
-                                    text-gray-700 leading-relaxed max-h-56 overflow-y-auto"></div>
+                             class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-sm whitespace-pre-wrap text-gray-700 dark:text-slate-200 leading-relaxed max-h-56 overflow-y-auto"></div>
                     </div>
                 </div>
 
                 <!-- Versão filtrada -->
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
                         Versão filtrada
-                        <span class="font-normal normal-case text-gray-400 ml-1">— substitui o original na exportação</span>
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500 ml-1">— substitui o original na exportação</span>
                     </label>
                     <textarea id="modal-texto-filtrado"
-                              class="w-full border border-gray-300 rounded-xl p-4 resize-none focus:outline-none
-                                     focus:ring-2 focus:ring-blue-300"
+                              class="w-full border border-gray-300 dark:border-slate-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"
                               rows="12"
                               placeholder="Cole ou escreva aqui a versão filtrada do texto..."></textarea>
                     <div class="flex gap-2 mt-2">
                         <button onclick="copiarOriginalParaFiltrado()"
-                                class="text-xs text-gray-500 hover:text-blue-600 transition border border-gray-200
-                                       rounded px-2 py-1 hover:border-blue-300">
+                                class="text-xs text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition border border-gray-200 dark:border-slate-700 rounded px-2 py-1 hover:border-blue-300">
                             Copiar original como base
                         </button>
                         <button onclick="limparFiltrado()"
-                                class="text-xs text-gray-500 hover:text-red-600 transition border border-gray-200
-                                       rounded px-2 py-1 hover:border-red-200">
+                                class="text-xs text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition border border-gray-200 dark:border-slate-700 rounded px-2 py-1 hover:border-red-200">
                             Limpar
                         </button>
                     </div>
@@ -249,82 +290,78 @@
 
                 <!-- Título da versão filtrada -->
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
                         Título na versão filtrada
-                        <span class="font-normal normal-case text-gray-400 ml-1">— deixe em branco para usar o original</span>
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500 ml-1">— deixe em branco para usar o original</span>
                     </label>
                     <input id="modal-titulo-filtrado" type="text"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
-                                  focus:ring-2 focus:ring-blue-300"
+                           class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                            placeholder="ex: Título original (versão filtrada)">
                 </div>
 
                 <!-- Nota do texto original -->
                 <div id="bloco-nota-original" class="hidden">
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
                             Nota do texto original
                         </label>
                         <label class="flex items-center gap-1.5 cursor-pointer select-none">
                             <input type="checkbox" id="modal-nota-original-exportar"
-                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-300"
+                                   class="rounded border-gray-300 dark:border-slate-600 text-blue-600 dark:text-blue-400 focus:ring-blue-300"
                                    onchange="toggleNotaOriginalExportar()">
                             <span id="label-nota-original-exportar"
-                                  class="text-xs text-gray-400">incluir na exportação</span>
+                                  class="text-xs text-gray-400 dark:text-slate-500">incluir na exportação</span>
                         </label>
                     </div>
                     <div id="modal-nota-original"
-                         class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm whitespace-pre-wrap
-                                text-amber-900 leading-relaxed max-h-32 overflow-y-auto opacity-40"></div>
+                         class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-sm whitespace-pre-wrap text-amber-900 leading-relaxed max-h-32 overflow-y-auto opacity-40"></div>
                 </div>
 
                 <!-- Nota da versão filtrada (pode ou não ser exportada) -->
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
                             Nota da versão
                         </label>
                         <label class="flex items-center gap-1.5 cursor-pointer select-none">
                             <input type="checkbox" id="modal-nota-exportar"
-                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-300"
+                                   class="rounded border-gray-300 dark:border-slate-600 text-blue-600 dark:text-blue-400 focus:ring-blue-300"
                                    onchange="toggleNotaExportar()">
                             <span id="label-nota-exportar"
-                                  class="text-xs text-gray-400">incluir na exportação</span>
+                                  class="text-xs text-gray-400 dark:text-slate-500">incluir na exportação</span>
                         </label>
                     </div>
                     <textarea id="modal-nota" rows="2"
-                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
-                                     focus:outline-none focus:ring-2 focus:ring-blue-300 opacity-60"
+                              class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 opacity-60"
                               placeholder="Nota sobre esta versão — marque acima se quiser incluí-la no JSON exportado..."></textarea>
                 </div>
 
                 <!-- Substituições (nunca exportado) -->
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-1">
                         Substituições
-                        <span class="font-normal normal-case text-gray-400 ml-1">— registro do que foi trocado, nunca exportado</span>
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500 ml-1">— registro do que foi trocado, nunca exportado</span>
                     </label>
                     <textarea id="modal-substituicoes" rows="3"
-                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
-                                     focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"
+                              class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 dark:bg-slate-800"
                               placeholder="ex: &quot;noite&quot; → &quot;tarde&quot;, removida estrofe 3..."></textarea>
                 </div>
 
             </div>
 
-            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white">
+            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
                 <button onclick="removerVersaoFiltrada()"
                         id="btn-remover"
-                        class="text-sm text-red-500 hover:text-red-700 transition hidden">
+                        class="text-sm text-red-500 dark:text-red-400 hover:text-red-700 transition hidden">
                     Remover versão filtrada
                 </button>
                 <div class="flex gap-2 ml-auto">
                     <button onclick="fecharModal()"
-                            class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition">
                         Cancelar
                     </button>
                     <button onclick="salvarVersaoFiltrada()"
-                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow">
+                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-500 transition shadow">
                         Salvar versão filtrada
                     </button>
                 </div>
@@ -341,75 +378,70 @@
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="fecharModalBanco()"></div>
 
     <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-        <div class="pointer-events-auto bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh]
-                    overflow-y-auto flex flex-col">
+        <div class="pointer-events-auto bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
 
-            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white z-10">
+            <div class="p-6 border-b flex items-start justify-between gap-4 sticky top-0 bg-white dark:bg-slate-900 z-10 border-gray-200 dark:border-slate-700">
                 <div>
                     <div id="mb-tipo-badge" class="badge badge-neutral mb-1.5"></div>
                     <h3 id="mb-titulo" class="font-bold text-lg leading-tight"></h3>
-                    <p class="text-xs text-gray-400 mt-1">Atualizado em <span id="mb-atualizado-em"></span></p>
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mt-1">Atualizado em <span id="mb-atualizado-em"></span></p>
                 </div>
-                <button onclick="fecharModalBanco()" class="text-gray-400 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
+                <button onclick="fecharModalBanco()" class="text-gray-400 dark:text-slate-500 hover:text-gray-700 text-xl font-light mt-1 shrink-0">✕</button>
             </div>
 
             <div class="p-6 space-y-5 flex-1">
-                <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-700">
+                <div class="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                     Editando sem o texto original por perto (nenhum JSON foi carregado). Pra comparar com o
                     original ou revisar a filtragem em si, carregue o backup do acervo lá em cima.
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
                         Versão filtrada
                     </label>
-                    <textarea id="mb-texto" class="w-full border border-gray-300 rounded-xl p-4 resize-none
-                              focus:outline-none focus:ring-2 focus:ring-blue-300" rows="12"></textarea>
+                    <textarea id="mb-texto" class="w-full border border-gray-300 dark:border-slate-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-blue-300" rows="12"></textarea>
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
                         Título na versão filtrada
-                        <span class="font-normal normal-case text-gray-400 ml-1">— deixe em branco para usar o original</span>
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500 ml-1">— deixe em branco para usar o original</span>
                     </label>
                     <input id="mb-titulo-filtrado" type="text"
-                           class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none
-                                  focus:ring-2 focus:ring-blue-300">
+                           class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300">
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-2">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-2">
                         Nota da versão
                     </label>
                     <textarea id="mb-nota" rows="2"
-                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
-                                     focus:outline-none focus:ring-2 focus:ring-blue-300"></textarea>
+                              class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300"></textarea>
                 </div>
 
                 <div>
-                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                    <label class="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide block mb-1">
                         Substituições
-                        <span class="font-normal normal-case text-gray-400 ml-1">— registro do que foi trocado, nunca exportado</span>
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500 ml-1">— registro do que foi trocado, nunca exportado</span>
                     </label>
                     <textarea id="mb-substituicoes" rows="3"
-                              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
-                                     focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50"></textarea>
+                              class="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-300 bg-gray-50 dark:bg-slate-800"></textarea>
                 </div>
             </div>
 
-            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white">
+            <div class="p-6 border-t flex justify-between items-center sticky bottom-0 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700">
                 <button onclick="removerVersaoBancoStandalone(this)"
                         id="mb-botao-remover"
-                        class="text-sm text-red-500 hover:text-red-700 transition">
+                        class="text-sm text-red-500 dark:text-red-400 hover:text-red-700 transition">
                     Remover versão salva
                 </button>
                 <div class="flex gap-2 ml-auto">
                     <button onclick="fecharModalBanco()"
-                            class="border border-gray-300 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 transition">
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-700 transition">
                         Cancelar
                     </button>
                     <button onclick="salvarEdicaoBancoStandalone()"
-                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow">
+                            class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 dark:hover:bg-blue-500 transition shadow">
                         Salvar alterações
                     </button>
                 </div>
@@ -420,6 +452,25 @@
 
 <!-- ── SCRIPT ───────────────────────────────────────────────────── -->
 <script>
+
+// ─── Tema (claro/escuro/automático) ─────────────────────────────────
+// Reaproveita js/theme.js (mesmo módulo do app principal, mesma chave
+// de localStorage) via import dinâmico, pelo mesmo motivo do bloco
+// abaixo: esta página não é um módulo ES.
+import('./js/theme.js').then(m => {
+    window.setTema = m.setTema;
+    m.initTema();
+});
+window.togglePainelTema = function () {
+    document.getElementById('painel-tema')?.classList.toggle('hidden');
+};
+document.addEventListener('click', (e) => {
+    const painel = document.getElementById('painel-tema');
+    const botao  = document.getElementById('btn-tema');
+    if (painel && !painel.classList.contains('hidden') && !painel.contains(e.target) && e.target !== botao) {
+        painel.classList.add('hidden');
+    }
+});
 
 // ─── UI compartilhada com o app principal ──────────────────────────
 // filtrar.html não é um módulo ES (tem ~16 onclick inline que dependem
@@ -670,25 +721,25 @@ function renderBancoStandalone() {
 
     container.classList.remove('hidden');
     container.innerHTML = `
-        <p class="text-xs text-gray-400 mt-4 mb-2">
+        <p class="text-xs text-gray-400 dark:text-slate-500 mt-4 mb-2">
             Versões já salvas neste navegador — dá pra ver/editar direto aqui, ou suba o JSON do acervo
             pra comparar com o texto original.
         </p>
         <div class="space-y-1.5">
             ${entradas.map(reg => `
-                <div class="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                <div class="flex items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs">
                     <button class="min-w-0 truncate text-left flex-1 hover:underline"
                         data-chave="${escapeHtml(reg.chaveArmazenada)}"
                         onclick="abrirModalBanco(this.dataset.chave)">
-                        <span class="inline-block text-[9px] uppercase font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mr-1.5 align-middle">${escapeHtml(ROTULO_TIPO_BANCO[reg.tipo] || reg.tipo)}</span>
-                        <span class="font-medium text-gray-700 align-middle">${escapeHtml(reg.tituloFiltrado || reg.tituloOriginal) || '(sem título)'}</span>
+                        <span class="inline-block text-[9px] uppercase font-bold text-gray-400 dark:text-slate-500 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded mr-1.5 align-middle">${escapeHtml(ROTULO_TIPO_BANCO[reg.tipo] || reg.tipo)}</span>
+                        <span class="font-medium text-gray-700 dark:text-slate-200 align-middle">${escapeHtml(reg.tituloFiltrado || reg.tituloOriginal) || '(sem título)'}</span>
                         ${reg.tituloOriginal && reg.tituloFiltrado && reg.tituloOriginal !== reg.tituloFiltrado
-                            ? `<span class="text-gray-400 align-middle"> (original: ${escapeHtml(reg.tituloOriginal)})</span>`
+                            ? `<span class="text-gray-400 dark:text-slate-500 align-middle"> (original: ${escapeHtml(reg.tituloOriginal)})</span>`
                             : ''}
                     </button>
                     <button data-chave="${escapeHtml(reg.chaveArmazenada)}" data-tipo="${escapeHtml(reg.tipo)}" data-titulo="${escapeHtml(reg.tituloOriginal || '')}"
                         onclick="removerVersaoBancoStandalone(this)"
-                        class="text-red-400 hover:text-red-600 flex-shrink-0">remover</button>
+                        class="text-red-400 hover:text-red-600 dark:hover:text-red-400 flex-shrink-0">remover</button>
                 </div>`).join('')}
         </div>`;
 }
@@ -938,7 +989,7 @@ function lerArquivo(file) {
 
 function mostrarStatus(msg, tipo) {
     const el = document.getElementById('upload-status');
-    el.className = `mt-3 text-sm font-medium ${tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`;
+    el.className = `mt-3 text-sm font-medium ${tipo === 'ok' ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`;
     el.textContent = msg;
     el.classList.remove('hidden');
 }
@@ -948,10 +999,10 @@ function mostrarStatus(msg, tipo) {
 function renderTagsFiltro() {
     const lista = document.getElementById('lista-tags-filtro');
     lista.innerHTML = tagsFiltro.map(tag => `
-        <span class="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-medium px-3 py-1 rounded-full">
+        <span class="inline-flex items-center gap-1 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs font-medium px-3 py-1 rounded-full">
             ${escapeHtml(tag)}
             <button onclick="removerTagFiltro('${tag.replace(/'/g,"\\'")}')"
-                    class="hover:text-red-600 font-bold ml-0.5 text-amber-600">×</button>
+                    class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-0.5 text-amber-600 dark:text-amber-400">×</button>
         </span>`).join('');
 }
 
@@ -1040,7 +1091,7 @@ function renderLista() {
 
     if (textosSensiveis.length === 0) {
         lista.innerHTML = `
-            <div class="card p-8 text-center text-gray-400">
+            <div class="card p-8 text-center text-gray-400 dark:text-slate-500">
                 <div class="text-4xl mb-2">🔍</div>
                 <p>Nenhum texto encontrado com as tags configuradas acima.</p>
                 <p class="text-xs mt-1">Verifique se as tags correspondem exatamente às usadas no Arquivo Poético.</p>
@@ -1056,35 +1107,32 @@ function renderLista() {
         const palavras = contarPalavras(item.texto);
 
         return `
-        <div class="card p-5 flex gap-4 hover:border-blue-200 transition-colors" id="card-${k.replace(':','-')}">
+        <div class="card p-5 flex gap-4 hover:border-blue-200 dark:hover:border-blue-800 transition-colors" id="card-${k.replace(':','-')}">
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                    <span class="badge ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 text-purple-700'}"
+                    <span class="badge ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300'}"
                           style="font-size:9px">
                         ${tipo.toUpperCase()}
                     </span>
                     ${tags.map(t => `<span class="badge badge-warn">${escapeHtml(t)}</span>`).join('')}
                     ${vf ? `<span class="badge badge-ok">✓ versão filtrada</span>` : ''}
                 </div>
-                <h3 class="font-semibold text-gray-800 leading-tight">${escapeHtml(item.titulo) || '(sem título)'}</h3>
-                <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-400">
+                <h3 class="font-semibold text-gray-800 dark:text-slate-100 leading-tight">${escapeHtml(item.titulo) || '(sem título)'}</h3>
+                <div class="flex flex-wrap gap-3 mt-1 text-xs text-gray-400 dark:text-slate-500">
                     ${livro ? `<span>📚 ${escapeHtml(livro)}</span>` : ''}
                     ${item.ano ? `<span>📅 ${item.ano}</span>` : ''}
                     <span>${palavras} palavras</span>
                 </div>
                 ${vf ? `
-                <div class="mt-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+                <div class="mt-2 text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950 border border-green-100 dark:border-green-800 rounded-lg px-3 py-1.5">
                     ✓ <strong>${escapeHtml(vf.titulo) || escapeHtml(item.titulo) + ' (versão filtrada)'}</strong>
                     — ${contarPalavras(vf.texto)} palavras
-                    ${vf.nota ? `· <em class="text-gray-500">${escapeHtml(vf.nota)}</em>` : ''}
+                    ${vf.nota ? `· <em class="text-gray-500 dark:text-slate-400">${escapeHtml(vf.nota)}</em>` : ''}
                 </div>` : ''}
             </div>
             <div class="flex flex-col gap-2 shrink-0">
                 <button onclick="abrirModal('${tipo}', ${item.id})"
-                        class="text-sm px-4 py-2 rounded-lg border transition
-                               ${vf
-                                   ? 'border-green-300 text-green-700 hover:bg-green-50'
-                                   : 'border-blue-300 text-blue-700 hover:bg-blue-50'}">
+                        class="text-sm px-4 py-2 rounded-lg border transition ${vf ? 'border-green-300 dark:border-green-700 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-950' : 'border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950'}">
                     ${vf ? 'Editar versão' : 'Criar versão filtrada'}
                 </button>
             </div>
@@ -1099,10 +1147,10 @@ function atualizarResumo() {
 
     document.getElementById('resumo-exportacao').innerHTML = `
         <span class="mr-4">📄 <strong>${total}</strong> texto${total !== 1 ? 's' : ''} sensível${total !== 1 ? 'is' : ''} no acervo</span>
-        <span class="mr-4 text-green-700">✓ <strong>${comVersao}</strong> com versão filtrada</span>
+        <span class="mr-4 text-green-700 dark:text-green-400">✓ <strong>${comVersao}</strong> com versão filtrada</span>
         ${semVersao > 0
-            ? `<span class="text-amber-700">⚠ <strong>${semVersao}</strong> sem versão — serão exportados como estão</span>`
-            : `<span class="text-green-700">Todos os textos têm versão filtrada.</span>`}
+            ? `<span class="text-amber-700 dark:text-amber-300">⚠ <strong>${semVersao}</strong> sem versão — serão exportados como estão</span>`
+            : `<span class="text-green-700 dark:text-green-400">Todos os textos têm versão filtrada.</span>`}
     `;
 }
 
@@ -1120,7 +1168,7 @@ function abrirModal(tipo, id) {
     const tags = tagsSensiveisDe(item);
 
     document.getElementById('modal-tipo-badge').textContent = tipo.toUpperCase();
-    document.getElementById('modal-tipo-badge').className = `badge mb-1.5 ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 text-purple-700'}`;
+    document.getElementById('modal-tipo-badge').className = `badge mb-1.5 ${tipo === 'poema' ? 'badge-neutral' : 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300'}`;
     document.getElementById('modal-titulo').textContent = item.titulo || '(sem título)';
     document.getElementById('modal-tags-orig').innerHTML = tags.map(t =>
         `<span class="badge badge-warn">${escapeHtml(t)}</span>`).join('');
