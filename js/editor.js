@@ -19,7 +19,7 @@ export function wrapText(before, after) {
 
     textarea.focus();
     const start = textarea.selectionStart;
-    const end   = textarea.selectionEnd;
+    const end = textarea.selectionEnd;
     const selected = textarea.value.substring(start, end);
     const novo = before + selected + after;
 
@@ -31,30 +31,35 @@ export function wrapText(before, after) {
 }
 
 export function applyStyle() {
-    const colorInput = document.getElementById('toolHex')?.value || document.getElementById('toolColor')?.value;
-    const fontInput  = document.getElementById('toolFont')?.value.trim();
-    const sizeInput  = document.getElementById('toolSize')?.value.trim();
+    const colorInput =
+        document.getElementById('toolHex')?.value || document.getElementById('toolColor')?.value;
+    const fontInput = document.getElementById('toolFont')?.value.trim();
+    const sizeInput = document.getElementById('toolSize')?.value.trim();
 
-    const font  = fontInput  ? `'${fontInput}'`   : 'inherit';
-    const size  = sizeInput  ? `${sizeInput}pt`   : 'inherit';
-    let   color = colorInput || 'inherit';
+    const font = fontInput ? `'${fontInput}'` : 'inherit';
+    const size = sizeInput ? `${sizeInput}pt` : 'inherit';
+    let color = colorInput || 'inherit';
     if (color !== 'inherit' && !color.startsWith('#')) color = '#' + color;
 
     const alignStyle = alignAtual ? ` text-align: ${alignAtual};` : '';
 
-    wrapText(`<div style="color: ${color}; font-family: ${font}; font-size: ${size};${alignStyle} display: inline;">`, `</div>`);
+    wrapText(
+        `<div style="color: ${color}; font-family: ${font}; font-size: ${size};${alignStyle} display: inline;">`,
+        `</div>`,
+    );
 
     // reseta alinhamento após aplicar
     alignAtual = null;
-    ['left', 'right'].forEach(a => {
+    ['left', 'right'].forEach((a) => {
         document.getElementById(`toolAlign-${a}`)?.classList.remove('bg-blue-100');
     });
 }
 
 export function setAlign(valor) {
     alignAtual = alignAtual === valor ? null : valor;
-    ['left', 'right'].forEach(a => {
-        document.getElementById(`toolAlign-${a}`)
+    ['left', 'right'].forEach((a) => {
+        document
+            .getElementById(`toolAlign-${a}`)
             ?.classList.toggle('bg-blue-100', alignAtual === a);
     });
 }
@@ -71,7 +76,7 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
 
     function adicionar(valor = null) {
         const input = document.getElementById(inputId);
-        const item  = (valor ?? input?.value ?? '').trim();
+        const item = (valor ?? input?.value ?? '').trim();
         if (item && !itens.includes(item)) {
             itens.push(item);
             renderizar();
@@ -80,20 +85,24 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
     }
 
     function remover(item) {
-        itens = itens.filter(i => i !== item);
+        itens = itens.filter((i) => i !== item);
         renderizar();
     }
 
     function renderizar() {
-        const container   = document.getElementById(containerId);
+        const container = document.getElementById(containerId);
         const inputOculto = document.getElementById(hiddenInputId);
         if (!container) return;
 
-        container.innerHTML = itens.map(i => `
+        container.innerHTML = itens
+            .map(
+                (i) => `
             <span class="${corClasse} text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
                 ${escapeHtml(i)}
                 <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
-            </span>`).join('');
+            </span>`,
+            )
+            .join('');
 
         if (inputOculto) inputOculto.value = itens.join(', ');
     }
@@ -105,7 +114,10 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
 
     function carregar(valorStr) {
         itens = valorStr
-            ? valorStr.split(',').map(s => s.trim()).filter(s => s)
+            ? valorStr
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter((s) => s)
             : [];
         renderizar();
     }
@@ -114,20 +126,32 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
 }
 
 const grupoTagsPoema = criarGrupoDeTags({
-    inputId: 'p-sinal-input', containerId: 'p-tags-container', hiddenInputId: 'p-sinal',
-    corClasse: 'bg-blue-600', nomeFuncaoRemover: 'removerTag',
+    inputId: 'p-sinal-input',
+    containerId: 'p-tags-container',
+    hiddenInputId: 'p-sinal',
+    corClasse: 'bg-blue-600',
+    nomeFuncaoRemover: 'removerTag',
 });
 const grupoPessoasPoema = criarGrupoDeTags({
-    inputId: 'p-pessoa-input', containerId: 'p-pessoas-container', hiddenInputId: 'p-pessoas',
-    corClasse: 'bg-rose-500', nomeFuncaoRemover: 'removerPessoa',
+    inputId: 'p-pessoa-input',
+    containerId: 'p-pessoas-container',
+    hiddenInputId: 'p-pessoas',
+    corClasse: 'bg-rose-500',
+    nomeFuncaoRemover: 'removerPessoa',
 });
 const grupoTagsProsa = criarGrupoDeTags({
-    inputId: 'pr-sinal-input', containerId: 'pr-tags-container', hiddenInputId: 'pr-sinal',
-    corClasse: 'bg-blue-600', nomeFuncaoRemover: 'removerTagProsa',
+    inputId: 'pr-sinal-input',
+    containerId: 'pr-tags-container',
+    hiddenInputId: 'pr-sinal',
+    corClasse: 'bg-blue-600',
+    nomeFuncaoRemover: 'removerTagProsa',
 });
 const grupoPessoasProsa = criarGrupoDeTags({
-    inputId: 'pr-pessoa-input', containerId: 'pr-pessoas-container', hiddenInputId: 'pr-pessoas',
-    corClasse: 'bg-rose-500', nomeFuncaoRemover: 'removerPessoaProsa',
+    inputId: 'pr-pessoa-input',
+    containerId: 'pr-pessoas-container',
+    hiddenInputId: 'pr-pessoas',
+    corClasse: 'bg-rose-500',
+    nomeFuncaoRemover: 'removerPessoaProsa',
 });
 
 // ─── Tags (Sinalizações) ─────────────────────────────────────
@@ -136,17 +160,27 @@ export function atualizarDatalist() {
     const datalist = document.getElementById('sugestoes-sinais');
     if (datalist) {
         datalist.innerHTML = extrairSinalizacoesUnicas(db.poemas)
-            .map(tag => `<option value="${escapeHtml(tag)}">`)
+            .map((tag) => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     atualizarDatalistPessoas();
 }
 
-export function adicionarTag(valor = null)    { grupoTagsPoema.adicionar(valor); }
-export function removerTag(tag)               { grupoTagsPoema.remover(tag); }
-export function renderizarTags()              { grupoTagsPoema.renderizar(); }
-export function resetTags()                   { grupoTagsPoema.reset(); }
-export function carregarTags(sinalizacoesStr) { grupoTagsPoema.carregar(sinalizacoesStr); }
+export function adicionarTag(valor = null) {
+    grupoTagsPoema.adicionar(valor);
+}
+export function removerTag(tag) {
+    grupoTagsPoema.remover(tag);
+}
+export function renderizarTags() {
+    grupoTagsPoema.renderizar();
+}
+export function resetTags() {
+    grupoTagsPoema.reset();
+}
+export function carregarTags(sinalizacoesStr) {
+    grupoTagsPoema.carregar(sinalizacoesStr);
+}
 
 // ─── Pessoas (Dedicado a) ──────────────────────────────────────
 // Mesmo padrão das Sinalizações, mas em grupo separado: pessoas
@@ -156,23 +190,32 @@ export function atualizarDatalistPessoas() {
     const datalist = document.getElementById('sugestoes-pessoas');
     if (!datalist) return;
     datalist.innerHTML = extrairPessoasUnicas(db.poemas)
-        .map(nome => `<option value="${escapeHtml(nome)}">`)
+        .map((nome) => `<option value="${escapeHtml(nome)}">`)
         .join('');
 }
 
-export function adicionarPessoa(valor = null) { grupoPessoasPoema.adicionar(valor); }
-export function removerPessoa(nome)           { grupoPessoasPoema.remover(nome); }
-export function renderizarPessoas()           { grupoPessoasPoema.renderizar(); }
-export function resetPessoas()                { grupoPessoasPoema.reset(); }
-export function carregarPessoas(pessoasStr)   { grupoPessoasPoema.carregar(pessoasStr); }
+export function adicionarPessoa(valor = null) {
+    grupoPessoasPoema.adicionar(valor);
+}
+export function removerPessoa(nome) {
+    grupoPessoasPoema.remover(nome);
+}
+export function renderizarPessoas() {
+    grupoPessoasPoema.renderizar();
+}
+export function resetPessoas() {
+    grupoPessoasPoema.reset();
+}
+export function carregarPessoas(pessoasStr) {
+    grupoPessoasPoema.carregar(pessoasStr);
+}
 
 // ─── Inicialização dos listeners ─────────────────────────────
-
 
 // ─── Tags/Pessoas: Prosa (espelha o padrão do Poema) ─────────
 
 export function atualizarDatalistProsa() {
-    const sinaisUnicos  = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas || [])]);
+    const sinaisUnicos = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas || [])]);
     const pessoasUnicas = extrairPessoasUnicas([...db.poemas, ...(db.prosas || [])]);
 
     // Datalists dentro do modal de Prosa (só existem depois que o modal
@@ -180,13 +223,13 @@ export function atualizarDatalistProsa() {
     const datalistSinais = document.getElementById('sugestoes-sinais-prosa');
     if (datalistSinais) {
         datalistSinais.innerHTML = sinaisUnicos
-            .map(tag => `<option value="${escapeHtml(tag)}">`)
+            .map((tag) => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     const datalistPessoas = document.getElementById('sugestoes-pessoas-prosa');
     if (datalistPessoas) {
         datalistPessoas.innerHTML = pessoasUnicas
-            .map(nome => `<option value="${escapeHtml(nome)}">`)
+            .map((nome) => `<option value="${escapeHtml(nome)}">`)
             .join('');
     }
 
@@ -195,36 +238,56 @@ export function atualizarDatalistProsa() {
     const datalistSinaisBulk = document.getElementById('sugestoes-sinais-bulk-prosa');
     if (datalistSinaisBulk) {
         datalistSinaisBulk.innerHTML = sinaisUnicos
-            .map(tag => `<option value="${escapeHtml(tag)}">`)
+            .map((tag) => `<option value="${escapeHtml(tag)}">`)
             .join('');
     }
     const datalistPessoasBulk = document.getElementById('sugestoes-pessoas-bulk-prosa');
     if (datalistPessoasBulk) {
         datalistPessoasBulk.innerHTML = pessoasUnicas
-            .map(nome => `<option value="${escapeHtml(nome)}">`)
+            .map((nome) => `<option value="${escapeHtml(nome)}">`)
             .join('');
     }
 }
 
-export function adicionarTagProsa(valor = null)    { grupoTagsProsa.adicionar(valor); }
-export function removerTagProsa(tag)               { grupoTagsProsa.remover(tag); }
-export function renderizarTagsProsa()              { grupoTagsProsa.renderizar(); }
-export function resetTagsProsa()                   { grupoTagsProsa.reset(); }
-export function carregarTagsProsa(sinalizacoesStr) { grupoTagsProsa.carregar(sinalizacoesStr); }
+export function adicionarTagProsa(valor = null) {
+    grupoTagsProsa.adicionar(valor);
+}
+export function removerTagProsa(tag) {
+    grupoTagsProsa.remover(tag);
+}
+export function renderizarTagsProsa() {
+    grupoTagsProsa.renderizar();
+}
+export function resetTagsProsa() {
+    grupoTagsProsa.reset();
+}
+export function carregarTagsProsa(sinalizacoesStr) {
+    grupoTagsProsa.carregar(sinalizacoesStr);
+}
 
-export function adicionarPessoaProsa(valor = null) { grupoPessoasProsa.adicionar(valor); }
-export function removerPessoaProsa(nome)           { grupoPessoasProsa.remover(nome); }
-export function renderizarPessoasProsa()           { grupoPessoasProsa.renderizar(); }
-export function resetPessoasProsa()                { grupoPessoasProsa.reset(); }
-export function carregarPessoasProsa(pessoasStr)   { grupoPessoasProsa.carregar(pessoasStr); }
+export function adicionarPessoaProsa(valor = null) {
+    grupoPessoasProsa.adicionar(valor);
+}
+export function removerPessoaProsa(nome) {
+    grupoPessoasProsa.remover(nome);
+}
+export function renderizarPessoasProsa() {
+    grupoPessoasProsa.renderizar();
+}
+export function resetPessoasProsa() {
+    grupoPessoasProsa.reset();
+}
+export function carregarPessoasProsa(pessoasStr) {
+    grupoPessoasProsa.carregar(pessoasStr);
+}
 
 export function initEditor() {
     const textarea = document.getElementById('p-texto');
-    const toolbar  = document.querySelector('.bg-slate-50.border-slate-200');
+    const toolbar = document.querySelector('.bg-slate-50.border-slate-200');
 
     // Sincroniza toolColor ↔ toolHex
     const toolColor = document.getElementById('toolColor');
-    const toolHex   = document.getElementById('toolHex');
+    const toolHex = document.getElementById('toolHex');
 
     if (toolColor && toolHex) {
         toolColor.addEventListener('input', (e) => {
@@ -241,7 +304,10 @@ export function initEditor() {
     const toolSize = document.getElementById('toolSize');
     if (toolSize) {
         toolSize.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); applyStyle(); }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyStyle();
+            }
         });
     }
 
@@ -250,12 +316,12 @@ export function initEditor() {
     // Persiste a seleção enquanto o usuário interage com a toolbar
     const updateSelection = () => {
         lastSelection.start = textarea.selectionStart;
-        lastSelection.end   = textarea.selectionEnd;
+        lastSelection.end = textarea.selectionEnd;
     };
 
-    textarea.addEventListener('select',  updateSelection);
+    textarea.addEventListener('select', updateSelection);
     textarea.addEventListener('mouseup', updateSelection);
-    textarea.addEventListener('keyup',   updateSelection);
+    textarea.addEventListener('keyup', updateSelection);
 
     if (toolbar) {
         const restore = () => {
@@ -266,7 +332,7 @@ export function initEditor() {
         };
 
         toolbar.addEventListener('pointerdown', (e) => {
-            const tag  = e.target.tagName;
+            const tag = e.target.tagName;
             const type = e.target.type;
             const isEditableInput = tag === 'INPUT' && (type === 'text' || type === 'number');
             if (isEditableInput) return;
@@ -274,15 +340,20 @@ export function initEditor() {
             restore();
         });
 
-        [toolHex, document.getElementById('toolFont'), toolSize].forEach(input => {
+        [toolHex, document.getElementById('toolFont'), toolSize].forEach((input) => {
             if (!input) return;
-            input.addEventListener('blur',    () => restore());
-            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { input.blur(); restore(); } });
+            input.addEventListener('blur', () => restore());
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                    restore();
+                }
+            });
         });
     }
 
     // Previne perda de seleção ao clicar nos inputs de ferramenta
-    ['toolColor', 'toolHex', 'toolFont', 'toolSize'].forEach(id => {
+    ['toolColor', 'toolHex', 'toolFont', 'toolSize'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('mousedown', () => {
@@ -297,7 +368,10 @@ export function initEditor() {
     const inputSinal = document.getElementById('p-sinal-input');
     if (inputSinal) {
         inputSinal.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); adicionarTag(); }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarTag();
+            }
         });
     }
 
@@ -305,7 +379,10 @@ export function initEditor() {
     const inputPessoa = document.getElementById('p-pessoa-input');
     if (inputPessoa) {
         inputPessoa.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); adicionarPessoa(); }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarPessoa();
+            }
         });
     }
 
@@ -313,13 +390,19 @@ export function initEditor() {
     const inputSinalProsa = document.getElementById('pr-sinal-input');
     if (inputSinalProsa) {
         inputSinalProsa.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); adicionarTagProsa(); }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarTagProsa();
+            }
         });
     }
     const inputPessoaProsa = document.getElementById('pr-pessoa-input');
     if (inputPessoaProsa) {
         inputPessoaProsa.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); adicionarPessoaProsa(); }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarPessoaProsa();
+            }
         });
     }
 }

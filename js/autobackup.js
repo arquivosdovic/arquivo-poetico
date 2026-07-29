@@ -20,11 +20,11 @@
 //   { id (timestamp ISO, keyPath), dataISO, dbJson (string) }
 // ============================================================
 
-const DB_NAME    = 'arquivoPoetico_snapshots';
+const DB_NAME = 'arquivoPoetico_snapshots';
 const DB_VERSION = 1;
-const STORE      = 'snapshots';
+const STORE = 'snapshots';
 
-const MAX_SNAPSHOTS    = 10;
+const MAX_SNAPSHOTS = 10;
 const INTERVALO_MIN_MS = 6 * 60 * 60 * 1000; // não tira 2 snapshots em menos de 6h
 
 let _db = null;
@@ -36,18 +36,21 @@ function abrirDB() {
         req.onupgradeneeded = (e) => {
             e.target.result.createObjectStore(STORE, { keyPath: 'id' });
         };
-        req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
-        req.onerror   = (e) => reject(e.target.error);
+        req.onsuccess = (e) => {
+            _db = e.target.result;
+            resolve(_db);
+        };
+        req.onerror = (e) => reject(e.target.error);
     });
 }
 
 async function listarTudo() {
     const idb = await abrirDB();
     return new Promise((resolve, reject) => {
-        const tx  = idb.transaction(STORE, 'readonly');
+        const tx = idb.transaction(STORE, 'readonly');
         const req = tx.objectStore(STORE).getAll();
         req.onsuccess = (e) => resolve(e.target.result || []);
-        req.onerror   = (e) => reject(e.target.error);
+        req.onerror = (e) => reject(e.target.error);
     });
 }
 
@@ -57,7 +60,7 @@ async function apagar(id) {
         const tx = idb.transaction(STORE, 'readwrite');
         tx.objectStore(STORE).delete(id);
         tx.oncomplete = resolve;
-        tx.onerror    = resolve;
+        tx.onerror = resolve;
     });
 }
 
@@ -69,7 +72,7 @@ export async function tirarSnapshotSeNecessario(db) {
         const existentes = (await listarTudo()).sort((a, b) => a.id.localeCompare(b.id));
         const ultimo = existentes[existentes.length - 1];
 
-        if (ultimo && (Date.now() - new Date(ultimo.dataISO).getTime()) < INTERVALO_MIN_MS) {
+        if (ultimo && Date.now() - new Date(ultimo.dataISO).getTime() < INTERVALO_MIN_MS) {
             return; // ainda dentro do intervalo mínimo, não faz nada
         }
 
@@ -77,15 +80,15 @@ export async function tirarSnapshotSeNecessario(db) {
         const registro = {
             id: agora.toISOString(),
             dataISO: agora.toISOString(),
-            dbJson: JSON.stringify(db)
+            dbJson: JSON.stringify(db),
         };
 
         const idb = await abrirDB();
         await new Promise((resolve, reject) => {
-            const tx  = idb.transaction(STORE, 'readwrite');
+            const tx = idb.transaction(STORE, 'readwrite');
             const req = tx.objectStore(STORE).put(registro);
             req.onsuccess = resolve;
-            req.onerror   = (e) => reject(e.target.error);
+            req.onerror = (e) => reject(e.target.error);
         });
 
         // Poda os mais antigos além do limite
@@ -117,11 +120,11 @@ export async function listarSnapshots() {
 // "Baixar JSON" manual — dá pra importar de volta pelo botão
 // "Importar JSON" normalmente.
 export function baixarSnapshot(registro) {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(registro.dbJson);
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(registro.dbJson);
     const a = document.createElement('a');
     const timestamp = registro.dataISO.replace(/[:.]/g, '-');
-    a.setAttribute("href", dataStr);
-    a.setAttribute("download", `arquivo_poetico_snapshot_${timestamp}.json`);
+    a.setAttribute('href', dataStr);
+    a.setAttribute('download', `arquivo_poetico_snapshot_${timestamp}.json`);
     document.body.appendChild(a);
     a.click();
     a.remove();

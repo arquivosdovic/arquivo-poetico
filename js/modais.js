@@ -15,7 +15,14 @@ const registro = {};
 // toggleModal abaixo). Modais sem formulário de texto longo (livro,
 // parte, seção, elemento) podem ficar sem isso por enquanto.
 export function registrarModal(id, arquivo, init, rastreador = null) {
-    registro[id] = { url: PASTA_MODAIS + arquivo, init, carregado: false, inicializado: false, promessa: null, rastreador };
+    registro[id] = {
+        url: PASTA_MODAIS + arquivo,
+        init,
+        carregado: false,
+        inicializado: false,
+        promessa: null,
+        rastreador,
+    };
 }
 
 async function carregarHTML(id) {
@@ -77,11 +84,13 @@ export async function garantirModal(id) {
 // teclado não "perder o lugar" na página de trás).
 const ultimoFocoPorModal = {};
 
-const SELETOR_FOCAVEIS = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const SELETOR_FOCAVEIS =
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function getFocaveis(container) {
-    return Array.from(container.querySelectorAll(SELETOR_FOCAVEIS))
-        .filter(el => el.offsetParent !== null); // ignora elementos ocultos (ex.: dentro de outro .hidden)
+    return Array.from(container.querySelectorAll(SELETOR_FOCAVEIS)).filter(
+        (el) => el.offsetParent !== null,
+    ); // ignora elementos ocultos (ex.: dentro de outro .hidden)
 }
 
 function abrirEFocar(id, el) {
@@ -102,7 +111,7 @@ function fecharEDevolverFoco(id, el) {
 
 export async function toggleModal(id) {
     const entrada = registro[id];
-    const el      = document.getElementById(id);
+    const el = document.getElementById(id);
     const estaAberto = el && !el.classList.contains('hidden');
 
     // Fechando um modal com alterações não salvas: confirma antes,
@@ -162,7 +171,7 @@ document.addEventListener('keydown', (e) => {
         const focaveis = getFocaveis(topo);
         if (focaveis.length === 0) return;
         const primeiro = focaveis[0];
-        const ultimo   = focaveis[focaveis.length - 1];
+        const ultimo = focaveis[focaveis.length - 1];
         if (e.shiftKey && document.activeElement === primeiro) {
             e.preventDefault();
             ultimo.focus();

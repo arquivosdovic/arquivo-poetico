@@ -17,8 +17,8 @@ import { lerCapa, revogarURL } from './capas.js';
 // mais recente que chamou preencherCapas; _lightboxIdx é o índice atual.
 // Isso permite navegar ◀ ▶ dentro do lightbox sem fechar e reabrir.
 
-let _lightboxUrls  = [];
-let _lightboxIdx   = 0;
+let _lightboxUrls = [];
+let _lightboxIdx = 0;
 let _lightboxTitulos = [];
 
 // Carrega as capas do IndexedDB de forma assíncrona após o HTML já estar no DOM.
@@ -28,36 +28,40 @@ let _lightboxTitulos = [];
 // Clique na imagem abre um lightbox navegável com ◀ ▶ e teclado ← →.
 export async function preencherCapas(container) {
     const imgs = container.querySelectorAll('img[data-capa-id]');
-    const entradas = await Promise.all(Array.from(imgs).map(async (img) => {
-        const id  = img.dataset.capaId;
-        const url = await lerCapa(id);
-        if (url) {
-            if (img.src && img.src.startsWith('blob:')) revogarURL(img.src);
-            img.src = url;
-            img.style.cursor = 'zoom-in';
-            img.title = 'Clique para ver a imagem completa';
-            img.onload = () => img.classList.replace('opacity-0', 'opacity-100');
-            img.onerror = () => { img.style.display = 'none'; };
-            // Retorna url + título do card pai (para exibir no lightbox)
-            const card = img.closest('[data-titulo]') || img.closest('div');
-            const titulo = card?.querySelector('h4')?.textContent?.trim() || '';
-            return { img, url, titulo };
-        } else {
-            img.style.display = 'none';
-            return null;
-        }
-    }));
+    const entradas = await Promise.all(
+        Array.from(imgs).map(async (img) => {
+            const id = img.dataset.capaId;
+            const url = await lerCapa(id);
+            if (url) {
+                if (img.src && img.src.startsWith('blob:')) revogarURL(img.src);
+                img.src = url;
+                img.style.cursor = 'zoom-in';
+                img.title = 'Clique para ver a imagem completa';
+                img.onload = () => img.classList.replace('opacity-0', 'opacity-100');
+                img.onerror = () => {
+                    img.style.display = 'none';
+                };
+                // Retorna url + título do card pai (para exibir no lightbox)
+                const card = img.closest('[data-titulo]') || img.closest('div');
+                const titulo = card?.querySelector('h4')?.textContent?.trim() || '';
+                return { img, url, titulo };
+            } else {
+                img.style.display = 'none';
+                return null;
+            }
+        }),
+    );
 
     // Monta o array de capas visíveis desta seção, na ordem do DOM
     const visíveis = entradas.filter(Boolean);
-    const urls    = visíveis.map(e => e.url);
-    const titulos = visíveis.map(e => e.titulo);
+    const urls = visíveis.map((e) => e.url);
+    const titulos = visíveis.map((e) => e.titulo);
 
     // Liga cada imagem ao seu índice neste grupo
-    visíveis.forEach(({ img, url }, idx) => {
+    visíveis.forEach(({ img }, idx) => {
         img.onclick = (e) => {
             e.stopPropagation();
-            _lightboxUrls   = urls;
+            _lightboxUrls = urls;
             _lightboxTitulos = titulos;
             abrirLightbox(idx);
         };
@@ -85,6 +89,7 @@ function abrirLightbox(idx) {
         // Imagem central
         const img = document.createElement('img');
         img.id = 'capa-lightbox-img';
+        img.alt = '';
         img.style.cssText = `
             max-width:82vw; max-height:82vh;
             object-fit:contain; border-radius:6px;
@@ -111,9 +116,12 @@ function abrirLightbox(idx) {
             font-size:32px; line-height:1; cursor:pointer;
             opacity:0.6; transition:opacity .15s;
         `;
-        btnFechar.onmouseenter = () => btnFechar.style.opacity = '1';
-        btnFechar.onmouseleave = () => btnFechar.style.opacity = '0.6';
-        btnFechar.onclick = (e) => { e.stopPropagation(); fecharLightbox(); };
+        btnFechar.onmouseenter = () => (btnFechar.style.opacity = '1');
+        btnFechar.onmouseleave = () => (btnFechar.style.opacity = '0.6');
+        btnFechar.onclick = (e) => {
+            e.stopPropagation();
+            fecharLightbox();
+        };
 
         // Botão anterior (◀)
         const btnPrev = document.createElement('button');
@@ -126,9 +134,18 @@ function abrirLightbox(idx) {
             cursor:pointer; opacity:0.7; transition:opacity .15s, background .15s;
             display:flex; align-items:center; justify-content:center;
         `;
-        btnPrev.onmouseenter = () => { btnPrev.style.opacity='1'; btnPrev.style.background='rgba(255,255,255,0.22)'; };
-        btnPrev.onmouseleave = () => { btnPrev.style.opacity='0.7'; btnPrev.style.background='rgba(255,255,255,0.12)'; };
-        btnPrev.onclick = (e) => { e.stopPropagation(); navegarLightbox(-1); };
+        btnPrev.onmouseenter = () => {
+            btnPrev.style.opacity = '1';
+            btnPrev.style.background = 'rgba(255,255,255,0.22)';
+        };
+        btnPrev.onmouseleave = () => {
+            btnPrev.style.opacity = '0.7';
+            btnPrev.style.background = 'rgba(255,255,255,0.12)';
+        };
+        btnPrev.onclick = (e) => {
+            e.stopPropagation();
+            navegarLightbox(-1);
+        };
 
         // Botão próximo (▶)
         const btnNext = document.createElement('button');
@@ -141,9 +158,18 @@ function abrirLightbox(idx) {
             cursor:pointer; opacity:0.7; transition:opacity .15s, background .15s;
             display:flex; align-items:center; justify-content:center;
         `;
-        btnNext.onmouseenter = () => { btnNext.style.opacity='1'; btnNext.style.background='rgba(255,255,255,0.22)'; };
-        btnNext.onmouseleave = () => { btnNext.style.opacity='0.7'; btnNext.style.background='rgba(255,255,255,0.12)'; };
-        btnNext.onclick = (e) => { e.stopPropagation(); navegarLightbox(+1); };
+        btnNext.onmouseenter = () => {
+            btnNext.style.opacity = '1';
+            btnNext.style.background = 'rgba(255,255,255,0.22)';
+        };
+        btnNext.onmouseleave = () => {
+            btnNext.style.opacity = '0.7';
+            btnNext.style.background = 'rgba(255,255,255,0.12)';
+        };
+        btnNext.onclick = (e) => {
+            e.stopPropagation();
+            navegarLightbox(+1);
+        };
 
         overlay.appendChild(img);
         overlay.appendChild(barra);
@@ -152,7 +178,9 @@ function abrirLightbox(idx) {
         overlay.appendChild(btnNext);
 
         // Fechar ao clicar no fundo (não nos botões/imagem)
-        overlay.onclick = (e) => { if (e.target === overlay) fecharLightbox(); };
+        overlay.onclick = (e) => {
+            if (e.target === overlay) fecharLightbox();
+        };
         document.body.appendChild(overlay);
         document.addEventListener('keydown', _lightboxTeclado);
     }
@@ -162,20 +190,22 @@ function abrirLightbox(idx) {
 }
 
 function _atualizarLightbox() {
-    const img   = document.getElementById('capa-lightbox-img');
+    const img = document.getElementById('capa-lightbox-img');
     const barra = document.getElementById('capa-lightbox-barra');
-    const prev  = document.getElementById('capa-lightbox-prev');
-    const next  = document.getElementById('capa-lightbox-next');
+    const prev = document.getElementById('capa-lightbox-prev');
+    const next = document.getElementById('capa-lightbox-next');
     if (!img) return;
 
     img.src = _lightboxUrls[_lightboxIdx] || '';
 
     const total = _lightboxUrls.length;
     const titulo = _lightboxTitulos[_lightboxIdx] || '';
+    img.alt = titulo ? `Capa de ${titulo}` : 'Capa ampliada';
     if (barra) {
-        barra.textContent = total > 1
-            ? `${_lightboxIdx + 1} / ${total}${titulo ? ' · ' + titulo : ''}`
-            : titulo || '';
+        barra.textContent =
+            total > 1
+                ? `${_lightboxIdx + 1} / ${total}${titulo ? ' · ' + titulo : ''}`
+                : titulo || '';
     }
 
     // Esconde os botões se só há uma capa (sem sentido navegar)
@@ -199,7 +229,15 @@ function fecharLightbox() {
 function _lightboxTeclado(e) {
     const overlay = document.getElementById('capa-lightbox');
     if (!overlay || overlay.style.display === 'none') return;
-    if (e.key === 'Escape')     { fecharLightbox(); }
-    if (e.key === 'ArrowLeft')  { e.preventDefault(); navegarLightbox(-1); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); navegarLightbox(+1); }
+    if (e.key === 'Escape') {
+        fecharLightbox();
+    }
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navegarLightbox(-1);
+    }
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navegarLightbox(+1);
+    }
 }

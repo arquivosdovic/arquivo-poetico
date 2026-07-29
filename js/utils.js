@@ -65,9 +65,19 @@ const ALLOWLIST_TEXTO_RICO = {
     ALLOWED_TAGS: ['div', 'span', 'p', 'br', 'b', 'i', 'u'],
     ALLOWED_ATTR: ['style'],
     ALLOWED_STYLES: [
-        'color', 'font-family', 'font-size', 'text-align', 'display',
-        'page-break-after', 'background-color', 'padding', 'border-radius',
-        'line-height', 'max-width', 'white-space', 'font-weight',
+        'color',
+        'font-family',
+        'font-size',
+        'text-align',
+        'display',
+        'page-break-after',
+        'background-color',
+        'padding',
+        'border-radius',
+        'line-height',
+        'max-width',
+        'white-space',
+        'font-weight',
     ],
 };
 // Nenhuma dessas propriedades aceita url()/expression() de verdade
@@ -101,9 +111,9 @@ export function sanitizarTextoRico(valor) {
     limpo = limpo.replace(/style="([^"]*)"/g, (match, decls) => {
         const permitidas = decls
             .split(';')
-            .map(d => d.trim())
+            .map((d) => d.trim())
             .filter(Boolean)
-            .filter(d => {
+            .filter((d) => {
                 const [propBruta, ...resto] = d.split(':');
                 const prop = propBruta?.trim().toLowerCase();
                 const valorDecl = resto.join(':').trim();
@@ -125,10 +135,13 @@ export function sanitizarTextoRico(valor) {
     // Se a sanitização reduziu drasticamente o texto visível, não
     // confiamos no resultado: caímos pra texto puro escapado (sem
     // formatação, mas sem perder o poema).
-    const textoPlanoAntes  = bruto.replace(/<[^>]*>/g, '').trim();
+    const textoPlanoAntes = bruto.replace(/<[^>]*>/g, '').trim();
     const textoPlanoDepois = limpo.replace(/<[^>]*>/g, '').trim();
     if (textoPlanoAntes.length > 20 && textoPlanoDepois.length < textoPlanoAntes.length * 0.5) {
-        console.warn('sanitizarTextoRico: HTML possivelmente malformado — formatação removida, texto original preservado como texto puro.', bruto.slice(0, 80));
+        console.warn(
+            'sanitizarTextoRico: HTML possivelmente malformado — formatação removida, texto original preservado como texto puro.',
+            bruto.slice(0, 80),
+        );
         return escapeHtml(bruto);
     }
 
@@ -158,7 +171,7 @@ export const sortBySeq = (lista) => {
 
 export async function toBase64(file) {
     if (!file) return null;
-    return new Promise(res => {
+    return new Promise((res) => {
         const r = new FileReader();
         r.onload = () => res(r.result);
         r.readAsDataURL(file);
@@ -188,23 +201,25 @@ export function reordenarPosicao(irmaos, itemAtual, posicaoDesejada, posicaoAnti
         return;
     }
 
-    const outros = irmaos.filter(it => it !== itemAtual && it.id != itemAtual.id);
+    const outros = irmaos.filter((it) => it !== itemAtual && it.id != itemAtual.id);
 
     if (posicaoAntiga === null) {
         // Inserção nova com posição: empurra pra frente quem tiver posição ≥ desejada
-        outros.forEach(it => {
+        outros.forEach((it) => {
             const seq = it.sequencia;
             if (seq !== null && seq >= posicaoDesejada) it.sequencia = seq + 1;
         });
     } else if (posicaoDesejada > posicaoAntiga) {
-        outros.forEach(it => {
+        outros.forEach((it) => {
             const seq = it.sequencia;
-            if (seq !== null && seq > posicaoAntiga && seq <= posicaoDesejada) it.sequencia = seq - 1;
+            if (seq !== null && seq > posicaoAntiga && seq <= posicaoDesejada)
+                it.sequencia = seq - 1;
         });
     } else if (posicaoDesejada < posicaoAntiga) {
-        outros.forEach(it => {
+        outros.forEach((it) => {
             const seq = it.sequencia;
-            if (seq !== null && seq >= posicaoDesejada && seq < posicaoAntiga) it.sequencia = seq + 1;
+            if (seq !== null && seq >= posicaoDesejada && seq < posicaoAntiga)
+                it.sequencia = seq + 1;
         });
     }
 
@@ -215,8 +230,21 @@ export function reordenarPosicao(irmaos, itemAtual, posicaoDesejada, posicaoAnti
 // Itens sem posição (null) são ignorados.
 export function fecharEspaco(irmaos, posicaoRemovida) {
     if (posicaoRemovida === null) return; // item sem posição não deixa buraco
-    irmaos.forEach(it => {
-        if (it.sequencia !== null && it.sequencia > posicaoRemovida) it.sequencia = it.sequencia - 1;
+    irmaos.forEach((it) => {
+        if (it.sequencia !== null && it.sequencia > posicaoRemovida)
+            it.sequencia = it.sequencia - 1;
+    });
+}
+
+// Inverso de fecharEspaco — reabre o espaço numa posição, empurrando pra
+// frente quem ocupa aquele lugar em diante. Usado só pelo "desfazer" de
+// exclusão (ver db.js): depois que fecharEspaco já rodou na hora de
+// excluir, isso devolve os irmãos pra posição de antes, liberando o
+// número original pro item restaurado.
+export function abrirEspaco(irmaos, posicaoAlvo) {
+    if (posicaoAlvo === null) return;
+    irmaos.forEach((it) => {
+        if (it.sequencia !== null && it.sequencia >= posicaoAlvo) it.sequencia = it.sequencia + 1;
     });
 }
 
@@ -226,28 +254,30 @@ export function fecharEspaco(irmaos, posicaoRemovida) {
 
 export function getIrmaosTopoLivro(db, livroId) {
     return [
-        ...db.partes.filter(p => p.livroId == livroId),
-        ...db.secoes.filter(s => s.paiTipo === 'livro' && s.paiId == livroId),
-        ...db.elementos.filter(e => e.paiTipo === 'livro' && e.paiId == livroId),
-        ...db.poemas.filter(p => p.paiTipo === 'livro' && p.paiId == livroId),
-        ...db.prosas.filter(p => p.paiTipo === 'livro' && p.paiId == livroId)
+        ...db.partes.filter((p) => p.livroId == livroId),
+        ...db.secoes.filter((s) => s.paiTipo === 'livro' && s.paiId == livroId),
+        ...db.elementos.filter((e) => e.paiTipo === 'livro' && e.paiId == livroId),
+        ...db.poemas.filter((p) => p.paiTipo === 'livro' && p.paiId == livroId),
+        ...db.prosas.filter((p) => p.paiTipo === 'livro' && p.paiId == livroId),
     ];
 }
 
 export function getIrmaosDentroParte(db, parteId) {
     return [
-        ...db.secoes.filter(s => s.paiTipo === 'parte' && s.paiId == parteId),
-        ...db.elementos.filter(e => e.paiTipo === 'parte' && e.paiId == parteId),
-        ...db.poemas.filter(p => p.paiTipo === 'parte' && p.paiId == parteId),
-        ...db.prosas.filter(p => p.paiTipo === 'parte' && p.paiId == parteId)
+        ...db.secoes.filter((s) => s.paiTipo === 'parte' && s.paiId == parteId),
+        ...db.elementos.filter((e) => e.paiTipo === 'parte' && e.paiId == parteId),
+        ...db.poemas.filter((p) => p.paiTipo === 'parte' && p.paiId == parteId),
+        ...db.prosas.filter((p) => p.paiTipo === 'parte' && p.paiId == parteId),
     ];
 }
 
 export function getIrmaosDentroSecao(db, secaoId) {
     return [
-        ...db.elementos.filter(e => e.paiTipo === 'secao' && e.paiId == secaoId),
-        ...db.poemas.filter(p => p.paiTipo === 'secao' && p.paiId == secaoId),
-        ...db.prosas.filter(p => (p.paiTipo === 'secao' && p.paiId == secaoId) || p.secaoId == secaoId)
+        ...db.elementos.filter((e) => e.paiTipo === 'secao' && e.paiId == secaoId),
+        ...db.poemas.filter((p) => p.paiTipo === 'secao' && p.paiId == secaoId),
+        ...db.prosas.filter(
+            (p) => (p.paiTipo === 'secao' && p.paiId == secaoId) || p.secaoId == secaoId,
+        ),
     ];
 }
 
@@ -264,35 +294,35 @@ export function getIrmaosPorEscopo(db, paiTipo, paiId) {
 // direto ao Livro/Parte usa sua própria sequência competindo na MESMA
 // escala dos irmãos reais (Partes, Seções), essa posição já é coerente.
 export function getPosicaoElemento(el, db) {
-    let livroSeq = 9999, posParte = 9999, posSecao = 9999;
+    let livroSeq = 9999,
+        posParte = 9999,
+        posSecao = 9999;
 
     if (el.paiTipo === 'livro') {
-        const l = db.livros.find(x => x.id == el.paiId);
+        const l = db.livros.find((x) => x.id == el.paiId);
         livroSeq = parseInt(l?.sequencia) || 9999;
         posParte = parseInt(el.sequencia) || 9999;
-
     } else if (el.paiTipo === 'parte') {
-        const p = db.partes.find(x => x.id == el.paiId);
+        const p = db.partes.find((x) => x.id == el.paiId);
         if (p) {
             posParte = parseInt(p.sequencia) || 9999;
-            const l = db.livros.find(x => x.id == p.livroId);
+            const l = db.livros.find((x) => x.id == p.livroId);
             livroSeq = parseInt(l?.sequencia) || 9999;
         }
         posSecao = parseInt(el.sequencia) || 9999;
-
     } else if (el.paiTipo === 'secao') {
-        const s = db.secoes.find(x => x.id == el.paiId);
+        const s = db.secoes.find((x) => x.id == el.paiId);
         if (s) {
             if (s.paiTipo === 'parte') {
-                const p = db.partes.find(x => x.id == s.paiId);
+                const p = db.partes.find((x) => x.id == s.paiId);
                 if (p) {
                     posParte = parseInt(p.sequencia) || 9999;
-                    const l = db.livros.find(x => x.id == p.livroId);
+                    const l = db.livros.find((x) => x.id == p.livroId);
                     livroSeq = parseInt(l?.sequencia) || 9999;
                 }
             } else {
                 posParte = parseInt(s.sequencia) || 9999;
-                const l = db.livros.find(x => x.id == s.paiId);
+                const l = db.livros.find((x) => x.id == s.paiId);
                 livroSeq = parseInt(l?.sequencia) || 9999;
             }
             posSecao = parseInt(s.sequencia) || 9999;
@@ -320,11 +350,12 @@ export function getPosicaoElemento(el, db) {
 //   });
 
 export function abrirModalConfirmacao({
-    titulo, rotulo,
+    titulo,
+    rotulo,
     mensagem = 'Esta ação é permanente e não pode ser desfeita.',
     textoConfirmar = 'Confirmar',
     corConfirmar = '#dc2626',
-    onConfirmar
+    onConfirmar,
 }) {
     let overlay = document.getElementById('modal-confirmar-exclusao');
     if (!overlay) {
@@ -382,10 +413,13 @@ export function abrirModalConfirmacao({
     document.getElementById('excl-titulo').textContent = titulo;
     document.getElementById('excl-mensagem').textContent = mensagem;
 
-    const btnCancelar  = document.getElementById('excl-cancelar');
+    const btnCancelar = document.getElementById('excl-cancelar');
     const btnConfirmar = document.getElementById('excl-confirmar');
-    btnCancelar.onclick  = _fecharModalExclusao;
-    btnConfirmar.onclick = () => { _fecharModalExclusao(); onConfirmar(); };
+    btnCancelar.onclick = _fecharModalExclusao;
+    btnConfirmar.onclick = () => {
+        _fecharModalExclusao();
+        onConfirmar();
+    };
     btnConfirmar.textContent = textoConfirmar;
     btnConfirmar.style.background = corConfirmar;
 
@@ -396,7 +430,13 @@ export function abrirModalConfirmacao({
 // Atalho pro caso mais comum (exclusão permanente) — mesma assinatura
 // de sempre, quem já chama abrirModalExclusao não precisa mudar nada.
 export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
-    abrirModalConfirmacao({ titulo, rotulo, textoConfirmar: 'Excluir', corConfirmar: '#dc2626', onConfirmar });
+    abrirModalConfirmacao({
+        titulo,
+        rotulo,
+        textoConfirmar: 'Excluir',
+        corConfirmar: '#dc2626',
+        onConfirmar,
+    });
 }
 
 function _fecharModalExclusao() {
@@ -426,14 +466,20 @@ export function criarRastreadorDeAlteracoes() {
 
     function observar(form) {
         if (!form) return;
-        form.addEventListener('input',  () => { sujo = true; });
-        form.addEventListener('change', () => { sujo = true; });
+        form.addEventListener('input', () => {
+            sujo = true;
+        });
+        form.addEventListener('change', () => {
+            sujo = true;
+        });
     }
 
     return {
         observar,
-        estaSujo:    () => sujo,
-        marcarLimpo: () => { sujo = false; },
+        estaSujo: () => sujo,
+        marcarLimpo: () => {
+            sujo = false;
+        },
     };
 }
 
@@ -447,14 +493,16 @@ export function criarRastreadorDeAlteracoes() {
 //
 // Uso: mostrarAviso('Selecione um vínculo.') ou
 //      mostrarAviso('Backup salvo!', 'sucesso')
+// Pra feedback de "salvo" depois de save(), usar avisarSalvo() (abaixo)
+// em vez de chamar mostrarAviso() direto — evita empilhar toast repetido.
 
 const _CORES_AVISO = {
-    erro:    { bg: '#dc2626', texto: '#fff' },
+    erro: { bg: '#dc2626', texto: '#fff' },
     sucesso: { bg: '#059669', texto: '#fff' },
-    info:    { bg: '#1f2937', texto: '#fff' }
+    info: { bg: '#1f2937', texto: '#fff' },
 };
 
-export function mostrarAviso(mensagem, tipo = 'erro') {
+function _containerToasts() {
     let container = document.getElementById('avisos-toast');
     if (!container) {
         container = document.createElement('div');
@@ -466,7 +514,13 @@ export function mostrarAviso(mensagem, tipo = 'erro') {
         `;
         document.body.appendChild(container);
     }
+    return container;
+}
 
+// Cria e insere o elemento do toast, com fade-in — sem agendar o
+// desaparecimento sozinho, já que mostrarAviso() e avisarSalvo() têm
+// necessidades diferentes de temporização (ver cada uma abaixo).
+function _criarToastEl(mensagem, tipo) {
     const cor = _CORES_AVISO[tipo] || _CORES_AVISO.erro;
     const toast = document.createElement('div');
     toast.style.cssText = `
@@ -480,12 +534,18 @@ export function mostrarAviso(mensagem, tipo = 'erro') {
     toast.textContent = mensagem;
     toast.title = 'Clique pra fechar';
     toast.onclick = () => _removerToast(toast);
-    container.appendChild(toast);
+    _containerToasts().appendChild(toast);
 
     requestAnimationFrame(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
     });
+
+    return toast;
+}
+
+export function mostrarAviso(mensagem, tipo = 'erro') {
+    const toast = _criarToastEl(mensagem, tipo);
 
     // Erros ficam mais tempo na tela — costumam pedir uma ação da pessoa,
     // sucesso/info são só uma confirmação rápida.
@@ -493,18 +553,108 @@ export function mostrarAviso(mensagem, tipo = 'erro') {
     setTimeout(() => _removerToast(toast), duracao);
 }
 
+// Variante de mostrarAviso() com um botão de ação embutido (ex.: "Desfazer"
+// depois de excluir um item — ver deleteItem em db.js). Diferente de
+// _criarToastEl, o clique no corpo do toast fecha ele normalmente, mas o
+// clique no botão dispara aoClicarAcao() antes de fechar. `duracaoMs` é o
+// tempo até o toast sumir sozinho (e, por convenção de quem chama, também
+// o prazo pra ação ainda poder ser desfeita — ver setTimeout gêmeo em
+// db.js que efetiva a exclusão de fato nesse mesmo intervalo).
+export function mostrarAvisoComAcao(mensagem, rotuloAcao, aoClicarAcao, duracaoMs = 6000) {
+    const cor = _CORES_AVISO.info;
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        display:flex; align-items:center; gap:14px;
+        background:${cor.bg}; color:${cor.texto};
+        padding:10px 14px; border-radius:8px; font-size:13px; font-weight:500;
+        box-shadow:0 4px 20px rgba(0,0,0,0.25); max-width:340px;
+        opacity:0; transform:translateY(8px);
+        transition:opacity .18s ease-out, transform .18s ease-out;
+        pointer-events:auto; cursor:pointer;
+    `;
+
+    const texto = document.createElement('span');
+    texto.textContent = mensagem;
+    texto.style.flex = '1';
+    toast.appendChild(texto);
+
+    const botao = document.createElement('button');
+    botao.type = 'button';
+    botao.textContent = rotuloAcao;
+    botao.style.cssText = `
+        background:transparent; border:none; padding:0; margin:0;
+        text-decoration:underline; font-weight:700; font-size:13px;
+        color:inherit; cursor:pointer; flex-shrink:0;
+    `;
+    botao.onclick = (e) => {
+        e.stopPropagation(); // não deixa o clique "vazar" pro onclick de fechar do toast
+        aoClicarAcao();
+        _removerToast(toast);
+    };
+    toast.appendChild(botao);
+
+    toast.title = 'Clique fora do botão pra fechar';
+    toast.onclick = () => _removerToast(toast);
+    _containerToasts().appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    });
+
+    setTimeout(() => _removerToast(toast), duracaoMs);
+    return toast;
+}
+
+// Deixa quem chamou mostrarAvisoComAcao() fechar o toast de fora (ex.: uma
+// exclusão pendente que foi confirmada de vez antes do tempo — ver
+// _finalizarExclusaoPendente em db.js. Sem isso, o toast antigo continua na
+// tela oferecendo um "Desfazer" que na verdade iria desfazer outra coisa).
+export function fecharAviso(toast) {
+    _removerToast(toast);
+}
+
 function _removerToast(toast) {
-    if (!toast.isConnected) return;
+    if (!toast?.isConnected) return;
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(8px)';
     setTimeout(() => toast.remove(), 180);
+}
+
+// ─── Feedback de "salvo" (toast coalescido) ─────────────────────
+// save() roda com bastante frequência — em toda ação discreta (editar,
+// apagar, reordenar, mover pra cima/baixo, ação em massa...). Um app sem
+// backend não tem "sincronizando..." nem confirmação de servidor — esse
+// "✓ salvo" é o único sinal de que o dado realmente não se perdeu.
+//
+// Se cada save() empilhasse um toast novo (mostrarAviso normal), uma
+// sequência rápida de ações — tipo mover um item 4 vezes seguidas —
+// deixaria uma coluna de "✓ salvo" repetidos entulhando o canto da tela.
+// Em vez disso, reaproveita o MESMO toast entre saves próximos e só
+// reinicia o timer de sumiço: nunca mais que um "✓ salvo" visível.
+let _toastSalvo = null;
+let _timeoutToastSalvo = null;
+
+export function avisarSalvo() {
+    clearTimeout(_timeoutToastSalvo);
+
+    if (!_toastSalvo?.isConnected) {
+        _toastSalvo = _criarToastEl('✓ salvo', 'sucesso');
+    }
+
+    _timeoutToastSalvo = setTimeout(() => {
+        _removerToast(_toastSalvo);
+        _toastSalvo = null;
+    }, 1800);
 }
 
 // Recebe o array db.livros e retorna todas as "Fases de Vida" já usadas,
 // sem repetição e ordenadas — pra alimentar o datalist de sugestões.
 export function extrairFasesUnicas(livros) {
     const fases = new Set();
-    livros.forEach(l => { if (l.fase && l.fase.trim()) fases.add(l.fase.trim()); });
+    livros.forEach((l) => {
+        if (l.fase && l.fase.trim()) fases.add(l.fase.trim());
+    });
     return Array.from(fases).sort();
 }
 
@@ -515,7 +665,7 @@ export function extrairFasesUnicas(livros) {
 export function lerDataParcial(prefixo) {
     const campos = ['dia', 'mes', 'ano', 'hora', 'minuto'];
     const obj = {};
-    campos.forEach(c => {
+    campos.forEach((c) => {
         const el = document.getElementById(`${prefixo}-${c}`);
         const v = el?.value;
         if (v !== '' && v != null) obj[c] = parseInt(v);
@@ -525,9 +675,9 @@ export function lerDataParcial(prefixo) {
 
 export function preencherDataParcial(prefixo, dataObj) {
     const campos = ['dia', 'mes', 'ano', 'hora', 'minuto'];
-    campos.forEach(c => {
+    campos.forEach((c) => {
         const el = document.getElementById(`${prefixo}-${c}`);
-        if (el) el.value = (dataObj && dataObj[c] != null) ? dataObj[c] : '';
+        if (el) el.value = dataObj && dataObj[c] != null ? dataObj[c] : '';
     });
 }
 
@@ -536,7 +686,10 @@ export function formatarDataParcial(dataObj) {
     const { dia, mes, ano, hora, minuto } = dataObj;
     let partes = '';
     if (dia || mes || ano) {
-        partes = [dia, mes, ano].filter(Boolean).map((v, i) => i < 2 ? String(v).padStart(2, '0') : v).join('/');
+        partes = [dia, mes, ano]
+            .filter(Boolean)
+            .map((v, i) => (i < 2 ? String(v).padStart(2, '0') : v))
+            .join('/');
     }
     if (hora != null) {
         const h = String(hora).padStart(2, '0');
@@ -565,24 +718,23 @@ export function anoDeDataParcial(dataObj) {
 function faixaDeDataParcial(dataObj) {
     if (!dataObj || (!dataObj.ano && !dataObj.mes && !dataObj.dia)) return null;
     const chave = (a, m, d) => a * 10000 + m * 100 + d;
-    const ano = dataObj.ano, mes = dataObj.mes, dia = dataObj.dia;
-    return [
-        chave(ano ?? 0,    mes ?? 1,  dia ?? 1),
-        chave(ano ?? 9999, mes ?? 12, dia ?? 31)
-    ];
+    const ano = dataObj.ano,
+        mes = dataObj.mes,
+        dia = dataObj.dia;
+    return [chave(ano ?? 0, mes ?? 1, dia ?? 1), chave(ano ?? 9999, mes ?? 12, dia ?? 31)];
 }
 
 // filtro = { de: {dia?,mes?,ano?}, ate: {dia?,mes?,ano?} } — qualquer
 // um dos dois lados pode estar vazio (faixa aberta só de um lado).
 function faixaDeFiltro(filtro) {
-    const deObj  = filtro?.de  || {};
+    const deObj = filtro?.de || {};
     const ateObj = filtro?.ate || {};
-    const temDe  = deObj.ano  || deObj.mes  || deObj.dia;
+    const temDe = deObj.ano || deObj.mes || deObj.dia;
     const temAte = ateObj.ano || ateObj.mes || ateObj.dia;
     if (!temDe && !temAte) return null;
 
-    const inicio = temDe  ? faixaDeDataParcial(deObj)[0]  : 0;
-    const fim    = temAte ? faixaDeDataParcial(ateObj)[1] : 99991231;
+    const inicio = temDe ? faixaDeDataParcial(deObj)[0] : 0;
+    const fim = temAte ? faixaDeDataParcial(ateObj)[1] : 99991231;
     return [inicio, fim];
 }
 
@@ -600,7 +752,7 @@ export function itemBateFiltroData(dataItem, filtro) {
     if (!faixaItem) return false;
 
     const [iniFiltro, fimFiltro] = faixaFiltro;
-    const [iniItem, fimItem]     = faixaItem;
+    const [iniItem, fimItem] = faixaItem;
     return iniItem <= fimFiltro && fimItem >= iniFiltro;
 }
 
@@ -610,14 +762,79 @@ export function filtroDataVazio() {
     return { de: {}, ate: {} };
 }
 
+/**
+ * Atalho de digitação pro filtro de data De/Até (dia/mês/ano): em vez de
+ * preencher 6 campos separados, aceita um texto num desses 4 formatos e
+ * devolve o mesmo formato { de: {...}, ate: {...} } que os campos
+ * avançados usam por trás — os 6 campos continuam existindo pra quem
+ * precisa de uma faixa mais específica (ex: de um mês até outro).
+ *
+ *   "2020"          → o ano inteiro de 2020
+ *   "2020-2023"     → de 2020 até 2023
+ *   "03/2020"       → março de 2020
+ *   "15/03/2020"    → um dia exato
+ *
+ * Texto vazio limpa o filtro (retorna filtroDataVazio()). Texto que não
+ * bate com nenhum formato, ou com valores fora da faixa válida (dia
+ * 1-31, mês 1-12, ano 1900-2100), retorna null — quem chama deve
+ * simplesmente não aplicar nada, sem mensagem de erro.
+ */
+export function parseFiltroDataRapido(texto) {
+    const t = (texto || '').trim();
+    if (!t) return filtroDataVazio();
+
+    const dentro = (n, min, max) => Number.isInteger(n) && n >= min && n <= max;
+
+    let m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) {
+        const dia = parseInt(m[1], 10);
+        const mes = parseInt(m[2], 10);
+        const ano = parseInt(m[3], 10);
+        if (!dentro(dia, 1, 31) || !dentro(mes, 1, 12) || !dentro(ano, 1900, 2100)) return null;
+        return { de: { dia, mes, ano }, ate: { dia, mes, ano } };
+    }
+
+    m = t.match(/^(\d{1,2})\/(\d{4})$/);
+    if (m) {
+        const mes = parseInt(m[1], 10);
+        const ano = parseInt(m[2], 10);
+        if (!dentro(mes, 1, 12) || !dentro(ano, 1900, 2100)) return null;
+        return { de: { mes, ano }, ate: { mes, ano } };
+    }
+
+    m = t.match(/^(\d{4})-(\d{4})$/);
+    if (m) {
+        const anoDe = parseInt(m[1], 10);
+        const anoAte = parseInt(m[2], 10);
+        if (!dentro(anoDe, 1900, 2100) || !dentro(anoAte, 1900, 2100)) return null;
+        return { de: { ano: anoDe }, ate: { ano: anoAte } };
+    }
+
+    m = t.match(/^(\d{4})$/);
+    if (m) {
+        const ano = parseInt(m[1], 10);
+        if (!dentro(ano, 1900, 2100)) return null;
+        return { de: { ano }, ate: { ano } };
+    }
+
+    return null;
+}
+
 // Retorna true se o filtro está ativo (tem algum limite de/até
 // preenchido) mas o item não tem essa data cadastrada — ou seja, ele
 // está sendo excluído só por falta de data, e não por estar fora da
 // faixa pedida. Usado pra avisar quantos itens caem nesse caso.
 export function itemFaltaDataParaFiltro(dataItem, filtro) {
-    const deObj  = filtro?.de  || {};
+    const deObj = filtro?.de || {};
     const ateObj = filtro?.ate || {};
-    const filtroAtivo = !!(deObj.ano || deObj.mes || deObj.dia || ateObj.ano || ateObj.mes || ateObj.dia);
+    const filtroAtivo = !!(
+        deObj.ano ||
+        deObj.mes ||
+        deObj.dia ||
+        ateObj.ano ||
+        ateObj.mes ||
+        ateObj.dia
+    );
     if (!filtroAtivo) return false;
     return !dataItem || (!dataItem.ano && !dataItem.mes && !dataItem.dia);
 }
@@ -625,12 +842,14 @@ export function itemFaltaDataParaFiltro(dataItem, filtro) {
 // Recebe o array db.poemas e retorna todos os nomes de pessoas únicos ordenados
 export function extrairPessoasUnicas(poemas) {
     const nomes = new Set();
-    poemas.forEach(p => {
+    poemas.forEach((p) => {
         if (p.pessoas) {
             const lista = Array.isArray(p.pessoas)
                 ? p.pessoas
-                : p.pessoas.split(',').map(s => s.trim());
-            lista.forEach(n => { if (n) nomes.add(n); });
+                : p.pessoas.split(',').map((s) => s.trim());
+            lista.forEach((n) => {
+                if (n) nomes.add(n);
+            });
         }
     });
     return Array.from(nomes).sort();
@@ -641,48 +860,59 @@ export function extrairPessoasUnicas(poemas) {
 // são preenchidos por decorarCamposBusca() em render-listas.js a partir
 // do vínculo estrutural (paiTipo/paiId) do poema/prosa.
 const CAMPOS_ATRIBUTO = {
-    titulo:   'titulo',
-    título:   'titulo',
-    texto:    'texto',
+    titulo: 'titulo',
+    título: 'titulo',
+    texto: 'texto',
     etiqueta: 'sinalizacoes',
-    pessoa:   'pessoas',
-    nota:     'notas',
-    livro:    '_buscaLivro',
-    parte:    '_buscaParte',
-    secao:    '_buscaSecao',
-    seção:    '_buscaSecao',
+    pessoa: 'pessoas',
+    nota: 'notas',
+    livro: '_buscaLivro',
+    parte: '_buscaParte',
+    secao: '_buscaSecao',
+    seção: '_buscaSecao',
 };
 
-// Filtra uma lista de textos (poemas/prosas) por uma busca livre que
-// procura em título, ano, sinalizações, pessoas e livros ao mesmo tempo
-// — ou, opcionalmente, restrita a um atributo específico.
+// Interpreta uma consulta de busca no estilo Google e devolve os grupos de
+// inclusão e os termos de exclusão — parte compartilhada entre
+// filtrarTextos (título/etiqueta/pessoa/etc.) e filtrarPorConteudo (texto).
 //
-// Sintaxe estilo Google:
+// Sintaxe:
 //   - termos soltos, separados por espaço, precisam TODOS aparecer (E lógico)
+//   - a palavra "ou" separa alternativas: só um dos lados precisa bater
+//     (E dentro de cada lado, OU entre os lados)
 //   - "frase entre aspas" busca a sequência exata, com espaços
 //   - um "-" na frente de um termo (ou de uma frase entre aspas) exclui
-//     qualquer item que o contenha
+//     qualquer item que o contenha — a exclusão vale sempre, não importa
+//     o lado do "ou" em que está
 //   - um prefixo "campo:" restringe o termo a um atributo (ver
 //     CAMPOS_ATRIBUTO acima); sem prefixo, busca nos campos gerais
 // Ex.: Dalton -rascunho            → menciona Dalton, mas não a tag "rascunho"
+//      Dalton ou Gabriela          → menciona Dalton OU Gabriela
 //      -2023                       → tudo, exceto o que tiver "2023"
 //      "beira do mar"              → só o que tiver essa sequência exata
 //      pessoa:Dalton               → só onde "Dalton" aparece em Pessoas
 //      -etiqueta:rascunho          → exclui quem tem a etiqueta "rascunho"
 //      secao:"Fragmentos do Fim"   → só quem está dentro dessa seção
-export function filtrarTextos(lista, query) {
-    if (!query || !query.trim()) return lista;
-
+function parseConsultaBusca(query) {
     // Cada match é, opcionalmente, um prefixo "campo:" seguido de uma
     // frase entre aspas ou uma palavra solta, com "-" opcional na frente
     // pra excluir — assim "frase exata" e "campo:"frase exata"" mantêm
     // os espaços de dentro em vez de serem quebrados palavra por palavra.
     const matches = query.trim().match(/-?(?:[a-zA-Zà-úÀ-Ú]+:)?"[^"]*"|-?\S+/g) || [];
 
-    const termosIncluir = [];
     const termosExcluir = [];
+    const gruposIncluir = [];
+    let grupoAtual = [];
 
-    matches.forEach(bruto => {
+    matches.forEach((bruto) => {
+        // "ou" sozinho (sem "-", aspas ou prefixo de campo) fecha o grupo
+        // atual e começa um novo — os grupos são combinados por OU depois.
+        if (bruto.toLowerCase() === 'ou') {
+            if (grupoAtual.length) gruposIncluir.push(grupoAtual);
+            grupoAtual = [];
+            return;
+        }
+
         const excluir = bruto.startsWith('-');
         let resto = excluir ? bruto.slice(1) : bruto;
 
@@ -699,18 +929,34 @@ export function filtrarTextos(lista, query) {
         }
         termo = termo.trim().toLowerCase();
         if (!termo) return;
-        (excluir ? termosExcluir : termosIncluir).push({ campo, termo });
-    });
 
-    return lista.filter(item => {
+        (excluir ? termosExcluir : grupoAtual).push({ campo, termo });
+    });
+    if (grupoAtual.length) gruposIncluir.push(grupoAtual);
+
+    return { gruposIncluir, termosExcluir };
+}
+
+// Filtra uma lista de textos (poemas/prosas) por uma busca livre que
+// procura em título, ano, sinalizações, pessoas e livros ao mesmo tempo
+// — ou, opcionalmente, restrita a um atributo específico. Ver
+// parseConsultaBusca acima pra sintaxe completa.
+export function filtrarTextos(lista, query) {
+    if (!query || !query.trim()) return lista;
+    const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
+
+    return lista.filter((item) => {
         const camposGerais = [
             item.titulo,
             item.ano,
             item.sinalizacoes,
             item.pessoas,
             item.notas,
-            item._livros
-        ].filter(Boolean).join(' ').toLowerCase();
+            item._livros,
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
 
         const valorDoTermo = (t) => {
             if (!t.campo) return camposGerais;
@@ -718,8 +964,29 @@ export function filtrarTextos(lista, query) {
             return v == null ? '' : String(v).toLowerCase();
         };
 
-        const combinaInclusao = termosIncluir.every(t => valorDoTermo(t).includes(t.termo));
-        const combinaExclusao = termosExcluir.some(t => valorDoTermo(t).includes(t.termo));
+        const combinaInclusao =
+            gruposIncluir.length === 0 ||
+            gruposIncluir.some((grupo) => grupo.every((t) => valorDoTermo(t).includes(t.termo)));
+        const combinaExclusao = termosExcluir.some((t) => valorDoTermo(t).includes(t.termo));
+
+        return combinaInclusao && !combinaExclusao;
+    });
+}
+
+// Filtra por conteúdo textual (versos do poema, corpo da prosa), com a
+// mesma sintaxe de "ou" / aspas / exclusão de parseConsultaBusca — mas
+// sempre olhando o campo "texto", ignorando prefixos de outros atributos.
+export function filtrarPorConteudo(lista, query) {
+    if (!query || !query.trim()) return lista;
+    const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
+
+    return lista.filter((item) => {
+        const texto = (item.texto == null ? '' : String(item.texto)).toLowerCase();
+
+        const combinaInclusao =
+            gruposIncluir.length === 0 ||
+            gruposIncluir.some((grupo) => grupo.every((t) => texto.includes(t.termo)));
+        const combinaExclusao = termosExcluir.some((t) => texto.includes(t.termo));
 
         return combinaInclusao && !combinaExclusao;
     });
@@ -728,12 +995,14 @@ export function filtrarTextos(lista, query) {
 // Recebe o array db.poemas e retorna todas as sinalizações únicas ordenadas
 export function extrairSinalizacoesUnicas(poemas) {
     const sinais = new Set();
-    poemas.forEach(p => {
+    poemas.forEach((p) => {
         if (p.sinalizacoes) {
             const lista = Array.isArray(p.sinalizacoes)
                 ? p.sinalizacoes
-                : p.sinalizacoes.split(',').map(s => s.trim());
-            lista.forEach(s => { if (s) sinais.add(s); });
+                : p.sinalizacoes.split(',').map((s) => s.trim());
+            lista.forEach((s) => {
+                if (s) sinais.add(s);
+            });
         }
     });
     return Array.from(sinais).sort();
@@ -742,34 +1011,37 @@ export function extrairSinalizacoesUnicas(poemas) {
 // Retorna array [livroSeq, nivel, parteSeq, secaoSeq] para ordenação hierárquica.
 // Usado por render.js para ordenar seções e elementos.
 export function getElementHierarchy(el, db) {
-    let livroSeq = 9999, parteSeq = 9999, secaoSeq = 9999, nivel = 9;
+    let livroSeq = 9999,
+        parteSeq = 9999,
+        secaoSeq = 9999,
+        nivel = 9;
 
     if (el.paiTipo === 'livro') {
-        const l = db.livros.find(x => x.id == el.paiId);
+        const l = db.livros.find((x) => x.id == el.paiId);
         livroSeq = parseInt(l?.sequencia) || 9999;
         nivel = 1;
     } else if (el.paiTipo === 'parte') {
-        const p = db.partes.find(x => x.id == el.paiId);
+        const p = db.partes.find((x) => x.id == el.paiId);
         if (p) {
             parteSeq = parseInt(p.sequencia) || 9999;
-            const l = db.livros.find(x => x.id == p.livroId);
+            const l = db.livros.find((x) => x.id == p.livroId);
             livroSeq = parseInt(l?.sequencia) || 9999;
             nivel = 2;
         }
     } else if (el.paiTipo === 'secao') {
-        const s = db.secoes.find(x => x.id == el.paiId);
+        const s = db.secoes.find((x) => x.id == el.paiId);
         if (s) {
             secaoSeq = parseInt(s.sequencia) || 9999;
             nivel = 3;
             if (s.paiTipo === 'parte') {
-                const p = db.partes.find(x => x.id == s.paiId);
+                const p = db.partes.find((x) => x.id == s.paiId);
                 if (p) {
                     parteSeq = parseInt(p.sequencia) || 9999;
-                    const l = db.livros.find(x => x.id == p.livroId);
+                    const l = db.livros.find((x) => x.id == p.livroId);
                     livroSeq = parseInt(l?.sequencia) || 9999;
                 }
             } else {
-                const l = db.livros.find(x => x.id == s.paiId);
+                const l = db.livros.find((x) => x.id == s.paiId);
                 livroSeq = parseInt(l?.sequencia) || 9999;
             }
         }

@@ -13,8 +13,8 @@ import { toggleModal, garantirModal } from './modais.js';
 export { toggleModal, garantirModal };
 
 export function openTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+    document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active-tab'));
     const targetTab = document.getElementById(tabName);
     const targetBtn = document.getElementById('btn-' + tabName);
     if (targetTab) targetTab.classList.add('active');
@@ -24,12 +24,12 @@ export function openTab(tabName) {
 // ─── Helpers de hierarquia (pra saber a qual Livro algo pertence) ──
 
 function livroIdDaParte(parteId) {
-    const parte = db.partes.find(p => p.id == parteId);
+    const parte = db.partes.find((p) => p.id == parteId);
     return parte ? parte.livroId : null;
 }
 
 function livroIdDaSecao(secaoId) {
-    const secao = db.secoes.find(s => s.id == secaoId);
+    const secao = db.secoes.find((s) => s.id == secaoId);
     if (!secao) return null;
     return secao.paiTipo === 'parte' ? livroIdDaParte(secao.paiId) : secao.paiId;
 }
@@ -38,9 +38,9 @@ function livroIdDaSecao(secaoId) {
 export function livroIdDoDestino(destinoStr) {
     if (!destinoStr) return null;
     const [tipo, id] = destinoStr.split(':');
-    if (tipo === 'livro')  return id;
-    if (tipo === 'parte')  return livroIdDaParte(id);
-    if (tipo === 'secao')  return livroIdDaSecao(id);
+    if (tipo === 'livro') return id;
+    if (tipo === 'parte') return livroIdDaParte(id);
+    if (tipo === 'secao') return livroIdDaSecao(id);
     return null;
 }
 
@@ -48,12 +48,14 @@ export function livroIdDoDestino(destinoStr) {
 // real do livro: Parte 1 (e suas Seções), Parte 2 (e suas Seções), e
 // Seções soltas direto no Livro entram na posição certa pela sequência.
 function construirEstruturaLivro(livroId) {
-    const partesDoLivro = db.partes.filter(p => String(p.livroId) === String(livroId));
-    const secoesDiretas = db.secoes.filter(s => s.paiTipo === 'livro' && String(s.paiId) === String(livroId));
+    const partesDoLivro = db.partes.filter((p) => String(p.livroId) === String(livroId));
+    const secoesDiretas = db.secoes.filter(
+        (s) => s.paiTipo === 'livro' && String(s.paiId) === String(livroId),
+    );
 
     const topo = [
-        ...partesDoLivro.map(item => ({ tipo: 'parte', item })),
-        ...secoesDiretas.map(item => ({ tipo: 'secao', item }))
+        ...partesDoLivro.map((item) => ({ tipo: 'parte', item })),
+        ...secoesDiretas.map((item) => ({ tipo: 'secao', item })),
     ].sort((a, b) => (parseInt(a.item.sequencia) || 9999) - (parseInt(b.item.sequencia) || 9999));
 
     let html = '';
@@ -61,9 +63,11 @@ function construirEstruturaLivro(livroId) {
         if (tipo === 'parte') {
             html += `<option value="parte:${item.id}">▸ ${escapeHtml(item.titulo)}</option>`;
             db.secoes
-                .filter(s => s.paiTipo === 'parte' && String(s.paiId) === String(item.id))
+                .filter((s) => s.paiTipo === 'parte' && String(s.paiId) === String(item.id))
                 .sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999))
-                .forEach(s => { html += `<option value="secao:${s.id}">　↳ ${escapeHtml(s.titulo)}</option>`; });
+                .forEach((s) => {
+                    html += `<option value="secao:${s.id}">　↳ ${escapeHtml(s.titulo)}</option>`;
+                });
         } else {
             html += `<option value="secao:${item.id}">↳ ${escapeHtml(item.titulo)}</option>`;
         }
@@ -76,13 +80,13 @@ function construirEstruturaLivro(livroId) {
 // Sem filtro: grupos planos (Livros / Partes / Seções).
 // Com livro filtrado: só aquele livro + sua estrutura interna ordenada.
 function construirOptionsDestino(livroFiltroId, formatoSimples = true) {
-    const livrosNormais   = db.livros.filter(l => l.tipo !== 'Coletânea');
-    const livroIdsNormais = new Set(livrosNormais.map(l => String(l.id)));
-    const partesNormais   = db.partes.filter(p => livroIdsNormais.has(String(p.livroId)));
-    const secoesNormais   = db.secoes.filter(s => {
+    const livrosNormais = db.livros.filter((l) => l.tipo !== 'Coletânea');
+    const livroIdsNormais = new Set(livrosNormais.map((l) => String(l.id)));
+    const partesNormais = db.partes.filter((p) => livroIdsNormais.has(String(p.livroId)));
+    const secoesNormais = db.secoes.filter((s) => {
         if (s.paiTipo === 'livro') return livroIdsNormais.has(String(s.paiId));
         if (s.paiTipo === 'parte') {
-            const pt = db.partes.find(p => p.id == s.paiId);
+            const pt = db.partes.find((p) => p.id == s.paiId);
             return pt ? livroIdsNormais.has(String(pt.livroId)) : false;
         }
         return false;
@@ -90,47 +94,72 @@ function construirOptionsDestino(livroFiltroId, formatoSimples = true) {
 
     if (!livroFiltroId) {
         if (formatoSimples) {
-            return '<option value="">Poema Avulso (Sem Vínculo)</option>' +
+            return (
+                '<option value="">Poema Avulso (Sem Vínculo)</option>' +
                 '<optgroup label="Livros">' +
-                livrosNormais.map(l => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`).join('') +
+                livrosNormais
+                    .map((l) => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`)
+                    .join('') +
                 '</optgroup>' +
                 '<optgroup label="Partes">' +
-                partesNormais.map(p => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`).join('') +
+                partesNormais
+                    .map((p) => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`)
+                    .join('') +
                 '</optgroup>' +
                 '<optgroup label="Seções">' +
-                secoesNormais.map(s => `<option value="secao:${s.id}">${escapeHtml(s.titulo)}</option>`).join('') +
-                '</optgroup>';
+                secoesNormais
+                    .map((s) => `<option value="secao:${s.id}">${escapeHtml(s.titulo)}</option>`)
+                    .join('') +
+                '</optgroup>'
+            );
         }
         const opcoes = [
-            ...livrosNormais.map(l => ({ id: `livro:${l.id}`, texto: `[Livro] ${escapeHtml(l.titulo)}` })),
-            ...partesNormais.map(p => ({ id: `parte:${p.id}`, texto: `[Parte] ${escapeHtml(p.titulo)}` })),
-            ...secoesNormais.map(s => ({ id: `secao:${s.id}`, texto: `[Seção] ${escapeHtml(s.titulo)}` }))
+            ...livrosNormais.map((l) => ({
+                id: `livro:${l.id}`,
+                texto: `[Livro] ${escapeHtml(l.titulo)}`,
+            })),
+            ...partesNormais.map((p) => ({
+                id: `parte:${p.id}`,
+                texto: `[Parte] ${escapeHtml(p.titulo)}`,
+            })),
+            ...secoesNormais.map((s) => ({
+                id: `secao:${s.id}`,
+                texto: `[Seção] ${escapeHtml(s.titulo)}`,
+            })),
         ];
-        return '<option value="">-- Sem vínculo (Avulso) --</option>' +
-            opcoes.map(o => `<option value="${o.id}">${o.texto}</option>`).join('');
+        return (
+            '<option value="">-- Sem vínculo (Avulso) --</option>' +
+            opcoes.map((o) => `<option value="${o.id}">${o.texto}</option>`).join('')
+        );
     }
 
-    const livro = db.livros.find(l => String(l.id) === String(livroFiltroId));
+    const livro = db.livros.find((l) => String(l.id) === String(livroFiltroId));
     const estrutura = construirEstruturaLivro(livroFiltroId);
 
     if (formatoSimples) {
-        return '<option value="">Poema Avulso (Sem Vínculo)</option>' +
+        return (
+            '<option value="">Poema Avulso (Sem Vínculo)</option>' +
             `<option value="livro:${livroFiltroId}">📖 ${escapeHtml(livro?.titulo) || ''} (o livro inteiro)</option>` +
-            `<optgroup label="Estrutura: ${escapeHtml(livro?.titulo) || ''}">${estrutura}</optgroup>`;
+            `<optgroup label="Estrutura: ${escapeHtml(livro?.titulo) || ''}">${estrutura}</optgroup>`
+        );
     }
-    return '<option value="">-- Sem vínculo (Avulso) --</option>' +
+    return (
+        '<option value="">-- Sem vínculo (Avulso) --</option>' +
         `<option value="livro:${livroFiltroId}">[Livro] ${escapeHtml(livro?.titulo) || ''}</option>` +
-        estrutura;
+        estrutura
+    );
 }
 
 function popularFiltroLivro(selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return;
     // Coletâneas excluídas: o filtro de destino é só para livros normais.
-    sel.innerHTML = '<option value="">-- Todos os livros --</option>' +
+    sel.innerHTML =
+        '<option value="">-- Todos os livros --</option>' +
         db.livros
-            .filter(l => l.tipo !== 'Coletânea')
-            .map(l => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`).join('');
+            .filter((l) => l.tipo !== 'Coletânea')
+            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
+            .join('');
 }
 
 // Reconstrói o select de Destino do Poema, filtrado pelo livro escolhido.
@@ -140,7 +169,7 @@ export function filtrarDestinoPoema(livroId) {
     if (!sel) return;
     const valorAtual = sel.value;
     sel.innerHTML = construirOptionsDestino(livroId, true);
-    const aindaExiste = Array.from(sel.options).some(o => o.value === valorAtual);
+    const aindaExiste = Array.from(sel.options).some((o) => o.value === valorAtual);
     if (aindaExiste) sel.value = valorAtual;
 }
 
@@ -149,7 +178,7 @@ export function filtrarDestinoProsa(livroId) {
     if (!sel) return;
     const valorAtual = sel.value;
     sel.innerHTML = construirOptionsDestino(livroId, false);
-    const aindaExiste = Array.from(sel.options).some(o => o.value === valorAtual);
+    const aindaExiste = Array.from(sel.options).some((o) => o.value === valorAtual);
     if (aindaExiste) sel.value = valorAtual;
 }
 
@@ -173,7 +202,7 @@ export function renderDropdowns() {
     const datalistFases = document.getElementById('sugestoes-fases');
     if (datalistFases) {
         datalistFases.innerHTML = extrairFasesUnicas(db.livros)
-            .map(fase => `<option value="${escapeHtml(fase)}">`)
+            .map((fase) => `<option value="${escapeHtml(fase)}">`)
             .join('');
     }
 
@@ -181,8 +210,9 @@ export function renderDropdowns() {
     const sPartLivro = document.getElementById('part-livro');
     if (sPartLivro)
         sPartLivro.innerHTML = db.livros
-            .filter(l => l.tipo !== 'Coletânea')
-            .map(l => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`).join('');
+            .filter((l) => l.tipo !== 'Coletânea')
+            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
+            .join('');
 
     // 2. Destino de Poemas (Livro, Parte ou Seção) — sem filtro por padrão
     const sPoemaDestino = document.getElementById('p-destino');
@@ -193,15 +223,19 @@ export function renderDropdowns() {
     //    livros-coletânea não aceitam seções; partes-de-coletânea também não.
     const sSecVinculo = document.getElementById('sec-vinculo');
     if (sSecVinculo) {
-        const livrosNormais = db.livros.filter(l => l.tipo !== 'Coletânea');
-        const livroIdsNormais = new Set(livrosNormais.map(l => String(l.id)));
-        const partesNormais  = db.partes.filter(p => livroIdsNormais.has(String(p.livroId)));
+        const livrosNormais = db.livros.filter((l) => l.tipo !== 'Coletânea');
+        const livroIdsNormais = new Set(livrosNormais.map((l) => String(l.id)));
+        const partesNormais = db.partes.filter((p) => livroIdsNormais.has(String(p.livroId)));
         sSecVinculo.innerHTML =
             '<optgroup label="Livros">' +
-            livrosNormais.map(l => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`).join('') +
+            livrosNormais
+                .map((l) => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`)
+                .join('') +
             '</optgroup>' +
             '<optgroup label="Partes">' +
-            partesNormais.map(p => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`).join('') +
+            partesNormais
+                .map((p) => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`)
+                .join('') +
             '</optgroup>';
     }
 
@@ -209,27 +243,33 @@ export function renderDropdowns() {
     //    elementos textuais pertencem à hierarquia editorial, não às coletâneas.
     const sElVinculo = document.getElementById('el-vinculo');
     if (sElVinculo) {
-        const livrosNorm = db.livros.filter(l => l.tipo !== 'Coletânea');
-        const livroIdsNorm = new Set(livrosNorm.map(l => String(l.id)));
-        const partesNorm  = db.partes.filter(p => livroIdsNorm.has(String(p.livroId)));
+        const livrosNorm = db.livros.filter((l) => l.tipo !== 'Coletânea');
+        const livroIdsNorm = new Set(livrosNorm.map((l) => String(l.id)));
+        const partesNorm = db.partes.filter((p) => livroIdsNorm.has(String(p.livroId)));
         // Seções cujo pai é livro ou parte normal
-        const secoesNorm  = db.secoes.filter(s => {
-            if (s.paiTipo === 'livro')  return livroIdsNorm.has(String(s.paiId));
+        const secoesNorm = db.secoes.filter((s) => {
+            if (s.paiTipo === 'livro') return livroIdsNorm.has(String(s.paiId));
             if (s.paiTipo === 'parte') {
-                const pt = db.partes.find(p => p.id == s.paiId);
+                const pt = db.partes.find((p) => p.id == s.paiId);
                 return pt ? livroIdsNorm.has(String(pt.livroId)) : false;
             }
             return false;
         });
         sElVinculo.innerHTML =
             '<optgroup label="Livros">' +
-            livrosNorm.map(l => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`).join('') +
+            livrosNorm
+                .map((l) => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`)
+                .join('') +
             '</optgroup>' +
             '<optgroup label="Partes">' +
-            partesNorm.map(p => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`).join('') +
+            partesNorm
+                .map((p) => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`)
+                .join('') +
             '</optgroup>' +
             '<optgroup label="Seções">' +
-            secoesNorm.map(s => `<option value="secao:${s.id}">${escapeHtml(s.titulo)}</option>`).join('') +
+            secoesNorm
+                .map((s) => `<option value="secao:${s.id}">${escapeHtml(s.titulo)}</option>`)
+                .join('') +
             '</optgroup>';
     }
 
@@ -238,8 +278,9 @@ export function renderDropdowns() {
     const sPoemaLivros = document.getElementById('p-livros');
     if (sPoemaLivros)
         sPoemaLivros.innerHTML = db.livros
-            .filter(l => l.tipo !== 'Coletânea')
-            .map(l => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`).join('');
+            .filter((l) => l.tipo !== 'Coletânea')
+            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
+            .join('');
 
     // 6. Elos e Referências entre poemas
     const sElos = document.getElementById('p-elos-select');
@@ -247,7 +288,7 @@ export function renderDropdowns() {
     if (sElos && sRefs) {
         const opcoes = [...db.poemas]
             .sort((a, b) => a.titulo.localeCompare(b.titulo))
-            .map(p => `<option value="${p.id}">${escapeHtml(p.titulo)}</option>`)
+            .map((p) => `<option value="${p.id}">${escapeHtml(p.titulo)}</option>`)
             .join('');
         sElos.innerHTML = opcoes;
         sRefs.innerHTML = opcoes;
@@ -267,17 +308,18 @@ export function autoPreencherDataPublicacao(destinoStr, prefixo) {
     const livroId = livroIdDoDestino(destinoStr);
     if (!livroId) return;
 
-    const livro = db.livros.find(l => String(l.id) === String(livroId));
+    const livro = db.livros.find((l) => String(l.id) === String(livroId));
     if (!livro || !livro.data) return;
 
     // Compatibilidade: livros antigos podem ter `data` como texto livre.
     // Nesse caso, extraímos só o ano (4 dígitos) com segurança.
-    const dataLivro = (typeof livro.data === 'string')
-        ? { ano: parseInt((livro.data.match(/\d{4}/) || [])[0]) || null }
-        : livro.data;
+    const dataLivro =
+        typeof livro.data === 'string'
+            ? { ano: parseInt((livro.data.match(/\d{4}/) || [])[0]) || null }
+            : livro.data;
     if (!dataLivro) return;
 
-    ['dia', 'mes', 'ano'].forEach(campo => {
+    ['dia', 'mes', 'ano'].forEach((campo) => {
         if (dataLivro[campo] == null) return;
         const el = document.getElementById(`${prefixo}-data-pub-${campo}`);
         if (el && !el.value) el.value = dataLivro[campo];
@@ -293,9 +335,13 @@ export async function prepararNovo(tipo) {
     renderDropdowns();
 
     const idFields = {
-        livro: 'l-edit-id', poema: 'p-edit-id', parte: 'part-edit-id',
-        secao: 'sec-edit-id', prosa: 'pr-edit-id', elemento: 'el-edit-id',
-        coletanea: 'col-edit-id'
+        livro: 'l-edit-id',
+        poema: 'p-edit-id',
+        parte: 'part-edit-id',
+        secao: 'sec-edit-id',
+        prosa: 'pr-edit-id',
+        elemento: 'el-edit-id',
+        coletanea: 'col-edit-id',
     };
 
     const idField = document.getElementById(idFields[tipo]);
@@ -312,11 +358,13 @@ export async function prepararNovo(tipo) {
     if (tipo === 'prosa') {
         // resetTagsProsa e resetPessoasProsa são importadas dinamicamente
         // pra evitar ciclo de importação (editor → ui não existe)
-        import('./editor.js').then(({ resetTagsProsa, resetPessoasProsa, atualizarDatalistProsa }) => {
-            resetTagsProsa();
-            resetPessoasProsa();
-            atualizarDatalistProsa();
-        });
+        import('./editor.js').then(
+            ({ resetTagsProsa, resetPessoasProsa, atualizarDatalistProsa }) => {
+                resetTagsProsa();
+                resetPessoasProsa();
+                atualizarDatalistProsa();
+            },
+        );
         const infoPr = document.getElementById('pr-coletaneas-info');
         if (infoPr) infoPr.innerHTML = '';
     }
@@ -341,26 +389,26 @@ export function togglePainel(painelId, botaoEl = null) {
 
 export function toggleCamposIntroducao() {
     const tipo = document.getElementById('el-tipo')?.value;
-    const box  = document.getElementById('campos-introducao');
+    const box = document.getElementById('campos-introducao');
     if (!box) return;
     box.classList.toggle('hidden', tipo !== 'Introdução');
 }
 
 export function sugerirSequencia() {
     const destino = document.getElementById('p-destino')?.value;
-    const campo   = document.getElementById('p-sequencia');
+    const campo = document.getElementById('p-sequencia');
     if (!destino || !campo) return;
 
     const [tipo, id] = destino.split(':');
     const textos = [
-        ...db.poemas.filter(p => String(p.paiTipo) === tipo && String(p.paiId) === id),
-        ...(db.prosas || []).filter(pr => String(pr.paiTipo) === tipo && String(pr.paiId) === id)
+        ...db.poemas.filter((p) => String(p.paiTipo) === tipo && String(p.paiId) === id),
+        ...(db.prosas || []).filter((pr) => String(pr.paiTipo) === tipo && String(pr.paiId) === id),
     ];
 
     if (textos.length === 0) {
         campo.value = 1;
     } else {
-        const max = Math.max(...textos.map(t => parseInt(t.sequencia) || 0));
+        const max = Math.max(...textos.map((t) => parseInt(t.sequencia) || 0));
         campo.value = max + 1;
     }
 }

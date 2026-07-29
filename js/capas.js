@@ -8,9 +8,11 @@
 //   no JSON de backup (db.livros/partes/secoes guardam só o ID).
 //
 // Modelo:
-//   db.livros[n].capa  → string ID  ex: "capa_1748123456789"  ou null
-//   db.partes[n].capa  → idem
-//   db.secoes[n].capa  → idem
+//   db.livros[n].capa     → string ID  ex: "capa_1748123456789"  ou null
+//   db.partes[n].capa     → idem
+//   db.secoes[n].capa     → idem
+//   db.elementos[n].imagem → idem (migrado de base64-no-db; ver
+//   migrarImagensLegadasParaIndexedDB em db.js)
 //   IndexedDB store "capas": { id (string, keyPath), blob (Blob) }
 //
 // API pública:
@@ -22,14 +24,14 @@
 
 import { mostrarAviso } from './utils.js';
 
-const DB_NAME    = 'arquivoPoetico_capas';
+const DB_NAME = 'arquivoPoetico_capas';
 const DB_VERSION = 1;
-const STORE      = 'capas';
+const STORE = 'capas';
 
 // Limites aplicados antes de salvar
-const MAX_LADO_PX  = 1200;   // lado maior redimensionado para no máximo isso
-const QUALIDADE    = 0.85;   // compressão JPEG
-const MAX_BYTES_IN = 2 * 1024 * 1024;  // 2 MB — rejeita arquivo bruto acima disso
+const MAX_LADO_PX = 1200; // lado maior redimensionado para no máximo isso
+const QUALIDADE = 0.85; // compressão JPEG
+const MAX_BYTES_IN = 2 * 1024 * 1024; // 2 MB — rejeita arquivo bruto acima disso
 
 // ─── Abertura do banco ────────────────────────────────────────
 
@@ -42,8 +44,11 @@ function abrirDB() {
         req.onupgradeneeded = (e) => {
             e.target.result.createObjectStore(STORE, { keyPath: 'id' });
         };
-        req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
-        req.onerror   = (e) => reject(e.target.error);
+        req.onsuccess = (e) => {
+            _db = e.target.result;
+            resolve(_db);
+        };
+        req.onerror = (e) => reject(e.target.error);
     });
 }
 
@@ -52,7 +57,11 @@ function abrirDB() {
 function processarImagem(file) {
     return new Promise((resolve, reject) => {
         if (file.size > MAX_BYTES_IN) {
-            reject(new Error(`Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Limite: 2 MB.`));
+            reject(
+                new Error(
+                    `Arquivo muito grande (${(file.size / 1024 / 1024).toFixed(1)} MB). Limite: 2 MB.`,
+                ),
+            );
             return;
         }
 
@@ -67,26 +76,29 @@ function processarImagem(file) {
             // Redimensiona apenas se ultrapassar o limite
             if (width > MAX_LADO_PX || height > MAX_LADO_PX) {
                 if (width >= height) {
-                    height = Math.round(height * MAX_LADO_PX / width);
-                    width  = MAX_LADO_PX;
+                    height = Math.round((height * MAX_LADO_PX) / width);
+                    width = MAX_LADO_PX;
                 } else {
-                    width  = Math.round(width * MAX_LADO_PX / height);
+                    width = Math.round((width * MAX_LADO_PX) / height);
                     height = MAX_LADO_PX;
                 }
             }
 
             const canvas = document.createElement('canvas');
-            canvas.width  = width;
+            canvas.width = width;
             canvas.height = height;
             canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
             canvas.toBlob(
                 (blob) => {
-                    if (!blob) { reject(new Error('Falha ao processar imagem.')); return; }
+                    if (!blob) {
+                        reject(new Error('Falha ao processar imagem.'));
+                        return;
+                    }
                     resolve(blob);
                 },
                 'image/jpeg',
-                QUALIDADE
+                QUALIDADE,
             );
         };
 
@@ -126,10 +138,10 @@ export async function salvarCapa(file, idExistente = null) {
     const idb = await abrirDB();
 
     return new Promise((resolve, reject) => {
-        const tx  = idb.transaction(STORE, 'readwrite');
+        const tx = idb.transaction(STORE, 'readwrite');
         const req = tx.objectStore(STORE).put({ id, blob });
         req.onsuccess = () => resolve(id);
-        req.onerror   = (e) => reject(e.target.error);
+        req.onerror = (e) => reject(e.target.error);
     });
 }
 
@@ -144,7 +156,7 @@ export async function lerCapa(id) {
     const idb = await abrirDB();
 
     return new Promise((resolve) => {
-        const tx  = idb.transaction(STORE, 'readonly');
+        const tx = idb.transaction(STORE, 'readonly');
         const req = tx.objectStore(STORE).get(id);
         req.onsuccess = (e) => {
             const registro = e.target.result;
@@ -165,7 +177,7 @@ export async function deletarCapa(id) {
         const tx = idb.transaction(STORE, 'readwrite');
         tx.objectStore(STORE).delete(id);
         tx.oncomplete = resolve;
-        tx.onerror    = resolve; // silencia — se não existia, tudo bem
+        tx.onerror = resolve; // silencia — se não existia, tudo bem
     });
 }
 
@@ -186,13 +198,13 @@ export function revogarURL(url) {
 function blobParaBase64(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result); // já vem como data URL
+        reader.onload = () => resolve(reader.result); // já vem como data URL
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(blob);
     });
 }
 
-async function base64ParaBlob(dataUrl) {
+export async function base64ParaBlob(dataUrl) {
     // fetch() aceita data: URLs nativamente — mais simples que decodificar
     // base64 na mão, e funciona em qualquer navegador atual.
     const resposta = await fetch(dataUrl);
@@ -208,10 +220,10 @@ async function base64ParaBlob(dataUrl) {
 export async function exportarTodasCapasBase64() {
     const idb = await abrirDB();
     const registros = await new Promise((resolve, reject) => {
-        const tx  = idb.transaction(STORE, 'readonly');
+        const tx = idb.transaction(STORE, 'readonly');
         const req = tx.objectStore(STORE).getAll();
         req.onsuccess = (e) => resolve(e.target.result || []);
-        req.onerror   = (e) => reject(e.target.error);
+        req.onerror = (e) => reject(e.target.error);
     });
 
     const mapa = {};
@@ -221,7 +233,10 @@ export async function exportarTodasCapasBase64() {
         } catch (err) {
             // Uma capa corrompida não deve derrubar o backup inteiro —
             // só fica de fora e segue o baile.
-            console.warn(`[capas.js] Não foi possível converter a capa ${registro.id} para base64:`, err);
+            console.warn(
+                `[capas.js] Não foi possível converter a capa ${registro.id} para base64:`,
+                err,
+            );
         }
     }
     return mapa;
@@ -241,10 +256,10 @@ export async function importarCapasBase64(mapa) {
         try {
             const blob = await base64ParaBlob(dataUrl);
             await new Promise((resolve, reject) => {
-                const tx  = idb.transaction(STORE, 'readwrite');
+                const tx = idb.transaction(STORE, 'readwrite');
                 const req = tx.objectStore(STORE).put({ id, blob });
                 req.onsuccess = resolve;
-                req.onerror   = (e) => reject(e.target.error);
+                req.onerror = (e) => reject(e.target.error);
             });
         } catch (err) {
             console.warn(`[capas.js] Não foi possível restaurar a capa ${id}:`, err);

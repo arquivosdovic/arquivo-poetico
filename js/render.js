@@ -13,8 +13,14 @@
 // nos módulos acima.
 // ============================================================
 
-import { renderLivros, renderPartes, renderSecoes,
-         renderPoemas, renderProsas, renderElementos } from './render-listas.js';
+import {
+    renderLivros,
+    renderPartes,
+    renderSecoes,
+    renderPoemas,
+    renderProsas,
+    renderElementos,
+} from './render-listas.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
 export function renderLists() {

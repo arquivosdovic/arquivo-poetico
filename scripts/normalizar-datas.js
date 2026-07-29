@@ -40,124 +40,134 @@
 const fs = require('fs');
 
 function normId(id) {
-  if (typeof id === 'string' && /^-?\d+$/.test(id)) return Number(id);
-  return id;
+    if (typeof id === 'string' && /^-?\d+$/.test(id)) return Number(id);
+    return id;
 }
 
 function dataVazia(v) {
-  return v === null || v === undefined;
+    return v === null || v === undefined;
 }
 
 function livroTemData(livro) {
-  return !!(livro && livro.data && (livro.data.dia || livro.data.mes || livro.data.ano));
+    return !!(livro && livro.data && (livro.data.dia || livro.data.mes || livro.data.ano));
 }
 
 function construirIndices(db) {
-  const livrosPorId = new Map((db.livros || []).map(l => [normId(l.id), l]));
-  const partesPorId = new Map((db.partes || []).map(p => [normId(p.id), p]));
-  const secoesPorId = new Map((db.secoes || []).map(s => [normId(s.id), s]));
-  return { livrosPorId, partesPorId, secoesPorId };
+    const livrosPorId = new Map((db.livros || []).map((l) => [normId(l.id), l]));
+    const partesPorId = new Map((db.partes || []).map((p) => [normId(p.id), p]));
+    const secoesPorId = new Map((db.secoes || []).map((s) => [normId(s.id), s]));
+    return { livrosPorId, partesPorId, secoesPorId };
 }
 
 // Sobe a hierarquia (secao -> parte -> livro) até achar o livro,
 // ou usa livrosIds direto se o texto já tiver essa ligação explícita.
 function resolverLivro(item, indices) {
-  const { livrosPorId, partesPorId, secoesPorId } = indices;
+    const { livrosPorId, partesPorId, secoesPorId } = indices;
 
-  if (Array.isArray(item.livrosIds) && item.livrosIds.length > 0) {
-    const livro = livrosPorId.get(normId(item.livrosIds[0]));
-    if (livro) return livro;
-  }
-
-  let paiTipo = item.paiTipo;
-  let paiId = normId(item.paiId);
-  let guard = 0;
-
-  while (paiTipo && paiId !== null && paiId !== undefined && guard++ < 10) {
-    if (paiTipo === 'livro') {
-      return livrosPorId.get(paiId) || null;
+    if (Array.isArray(item.livrosIds) && item.livrosIds.length > 0) {
+        const livro = livrosPorId.get(normId(item.livrosIds[0]));
+        if (livro) return livro;
     }
-    if (paiTipo === 'parte') {
-      const parte = partesPorId.get(paiId);
-      if (!parte) return null;
-      return livrosPorId.get(normId(parte.livroId)) || null;
-    }
-    if (paiTipo === 'secao') {
-      const secao = secoesPorId.get(paiId);
-      if (!secao) return null;
-      paiTipo = secao.paiTipo;
-      paiId = normId(secao.paiId);
-      continue;
+
+    let paiTipo = item.paiTipo;
+    let paiId = normId(item.paiId);
+    let guard = 0;
+
+    while (paiTipo && paiId !== null && paiId !== undefined && guard++ < 10) {
+        if (paiTipo === 'livro') {
+            return livrosPorId.get(paiId) || null;
+        }
+        if (paiTipo === 'parte') {
+            const parte = partesPorId.get(paiId);
+            if (!parte) return null;
+            return livrosPorId.get(normId(parte.livroId)) || null;
+        }
+        if (paiTipo === 'secao') {
+            const secao = secoesPorId.get(paiId);
+            if (!secao) return null;
+            paiTipo = secao.paiTipo;
+            paiId = normId(secao.paiId);
+            continue;
+        }
+        return null;
     }
     return null;
-  }
-  return null;
 }
 
 function normalizarLista(lista, tipoLabel, indices, relatorio) {
-  for (const item of lista) {
-    if (!dataVazia(item.dataPublicacao)) continue;
+    for (const item of lista) {
+        if (!dataVazia(item.dataPublicacao)) continue;
 
-    if (item.publicado === false) {
-      relatorio.pulados_descartados.push(`${tipoLabel}: ${item.titulo}`);
-      continue;
+        if (item.publicado === false) {
+            relatorio.pulados_descartados.push(`${tipoLabel}: ${item.titulo}`);
+            continue;
+        }
+
+        const livro = resolverLivro(item, indices);
+
+        if (!livro) {
+            relatorio.pulados_sem_livro.push(`${tipoLabel}: ${item.titulo}`);
+            continue;
+        }
+
+        if (!livroTemData(livro)) {
+            relatorio.pulados_livro_sem_data.push(
+                `${tipoLabel}: ${item.titulo} (livro: ${livro.titulo})`,
+            );
+            continue;
+        }
+
+        item.dataPublicacao = { ...livro.data };
+        relatorio.normalizados.push(
+            `${tipoLabel}: ${item.titulo} -> ${JSON.stringify(item.dataPublicacao)} (livro: ${livro.titulo})`,
+        );
     }
-
-    const livro = resolverLivro(item, indices);
-
-    if (!livro) {
-      relatorio.pulados_sem_livro.push(`${tipoLabel}: ${item.titulo}`);
-      continue;
-    }
-
-    if (!livroTemData(livro)) {
-      relatorio.pulados_livro_sem_data.push(`${tipoLabel}: ${item.titulo} (livro: ${livro.titulo})`);
-      continue;
-    }
-
-    item.dataPublicacao = { ...livro.data };
-    relatorio.normalizados.push(`${tipoLabel}: ${item.titulo} -> ${JSON.stringify(item.dataPublicacao)} (livro: ${livro.titulo})`);
-  }
 }
 
 function main() {
-  const [, , entradaPath, saidaPath] = process.argv;
+    const [, , entradaPath, saidaPath] = process.argv;
 
-  if (!entradaPath || !saidaPath) {
-    console.error('Uso: node normalizar-datas.js entrada.json saida.json');
-    process.exit(1);
-  }
+    if (!entradaPath || !saidaPath) {
+        console.error('Uso: node normalizar-datas.js entrada.json saida.json');
+        process.exit(1);
+    }
 
-  const db = JSON.parse(fs.readFileSync(entradaPath, 'utf8'));
-  const indices = construirIndices(db);
+    const db = JSON.parse(fs.readFileSync(entradaPath, 'utf8'));
+    const indices = construirIndices(db);
 
-  const relatorio = {
-    normalizados: [],
-    pulados_descartados: [],
-    pulados_sem_livro: [],
-    pulados_livro_sem_data: [],
-  };
+    const relatorio = {
+        normalizados: [],
+        pulados_descartados: [],
+        pulados_sem_livro: [],
+        pulados_livro_sem_data: [],
+    };
 
-  normalizarLista(db.poemas || [], 'poema', indices, relatorio);
-  normalizarLista(db.prosas || [], 'prosa', indices, relatorio);
+    normalizarLista(db.poemas || [], 'poema', indices, relatorio);
+    normalizarLista(db.prosas || [], 'prosa', indices, relatorio);
 
-  fs.writeFileSync(saidaPath, JSON.stringify(db, null, 2), 'utf8');
+    fs.writeFileSync(saidaPath, JSON.stringify(db, null, 2), 'utf8');
 
-  console.log(`\n✅ ${relatorio.normalizados.length} textos normalizados:\n`);
-  relatorio.normalizados.forEach(l => console.log('  ' + l));
+    console.log(`\n✅ ${relatorio.normalizados.length} textos normalizados:\n`);
+    relatorio.normalizados.forEach((l) => console.log('  ' + l));
 
-  console.log(`\n⏭️  ${relatorio.pulados_descartados.length} pulados por publicado:false (descartados/cortados):`);
-  relatorio.pulados_descartados.forEach(l => console.log('  ' + l));
+    console.log(
+        `\n⏭️  ${relatorio.pulados_descartados.length} pulados por publicado:false (descartados/cortados):`,
+    );
+    relatorio.pulados_descartados.forEach((l) => console.log('  ' + l));
 
-  console.log(`\n⏭️  ${relatorio.pulados_livro_sem_data.length} pulados por o livro ainda não ter data de publicação:`);
-  relatorio.pulados_livro_sem_data.forEach(l => console.log('  ' + l));
+    console.log(
+        `\n⏭️  ${relatorio.pulados_livro_sem_data.length} pulados por o livro ainda não ter data de publicação:`,
+    );
+    relatorio.pulados_livro_sem_data.forEach((l) => console.log('  ' + l));
 
-  if (relatorio.pulados_sem_livro.length) {
-    console.log(`\n⚠️  ${relatorio.pulados_sem_livro.length} pulados por não ter sido possível achar o livro (livrosIds e hierarquia paiTipo/paiId ausentes ou quebradas):`);
-    relatorio.pulados_sem_livro.forEach(l => console.log('  ' + l));
-  }
+    if (relatorio.pulados_sem_livro.length) {
+        console.log(
+            `\n⚠️  ${relatorio.pulados_sem_livro.length} pulados por não ter sido possível achar o livro (livrosIds e hierarquia paiTipo/paiId ausentes ou quebradas):`,
+        );
+        relatorio.pulados_sem_livro.forEach((l) => console.log('  ' + l));
+    }
 
-  console.log(`\nSalvo em: ${saidaPath}`);
+    console.log(`\nSalvo em: ${saidaPath}`);
 }
 
 main();

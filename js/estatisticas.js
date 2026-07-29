@@ -7,29 +7,266 @@ import { db } from './db.js';
 import { escapeHtml } from './utils.js';
 
 const STOPWORDS = new Set([
-    'a','o','as','os','um','uma','uns','umas','de','do','da','dos','das','em','no','na','nos','nas',
-    'por','para','pra','pro','pros','pras','com','sem','sob','sobre','entre','até','após','ante','perante','desde','contra',
-    'e','ou','mas','nem','que','se','quando','como','porque','pois','porém','contudo','todavia',
-    'eu','tu','ele','ela','nós','vós','eles','elas','me','te','se','nos','vos','lhe','lhes','lo','la',
-    'meu','minha','meus','minhas','teu','tua','teus','tuas','seu','sua','seus','suas','nosso','nossa',
-    'nossos','nossas','este','esta','estes','estas','esse','essa','esses','essas','aquele','aquela',
-    'aqueles','aquelas','isto','isso','aquilo','this','that',
-    'é','foi','ser','são','era','eram','está','estão','estava','estavam','ter','tem','têm','tinha',
-    'tinham','há','havia','seja','sejam','será','serão','sido','sendo','estar','estado','faz','fazer',
-    'não','sim','mais','menos','muito','muita','muitos','muitas','pouco','pouca','poucos','poucas',
-    'já','ainda','também','só','apenas','bem','mal','assim','aqui','ali','lá','onde','aonde','cá',
-    'então','enquanto','embora','caso','cada','todo','toda','todos','todas','outro','outra','outros',
-    'outras','algum','alguma','alguns','algumas','nenhum','nenhuma','qualquer','quaisquer',
-    'meu','seu','dele','dela','deles','delas','lhe','consigo','si','vossa','vosso',
-    'ao','aos','à','às','pelo','pela','pelos','pelas','num','numa','nuns','numas','dum','duma',
-    'qual','quais','quem','cujo','cuja','cujos','cujas','tão','tal','tanto','tanta','tantos','tantas',
-    'sob','sobre','as','os','um','uma',
-    'foi','ser','ter','vai','vou','vem','vir','quer','ver','dar','deu','dá','dão','fui','foi',
-    'isso','isto','aqui','lá','cá','aí','né','tá','tô','num','numas','dum','duma',
+    'a',
+    'o',
+    'as',
+    'os',
+    'um',
+    'uma',
+    'uns',
+    'umas',
+    'de',
+    'do',
+    'da',
+    'dos',
+    'das',
+    'em',
+    'no',
+    'na',
+    'nos',
+    'nas',
+    'por',
+    'para',
+    'pra',
+    'pro',
+    'pros',
+    'pras',
+    'com',
+    'sem',
+    'sob',
+    'sobre',
+    'entre',
+    'até',
+    'após',
+    'ante',
+    'perante',
+    'desde',
+    'contra',
+    'e',
+    'ou',
+    'mas',
+    'nem',
+    'que',
+    'se',
+    'quando',
+    'como',
+    'porque',
+    'pois',
+    'porém',
+    'contudo',
+    'todavia',
+    'eu',
+    'tu',
+    'ele',
+    'ela',
+    'nós',
+    'vós',
+    'eles',
+    'elas',
+    'me',
+    'te',
+    'se',
+    'nos',
+    'vos',
+    'lhe',
+    'lhes',
+    'lo',
+    'la',
+    'meu',
+    'minha',
+    'meus',
+    'minhas',
+    'teu',
+    'tua',
+    'teus',
+    'tuas',
+    'seu',
+    'sua',
+    'seus',
+    'suas',
+    'nosso',
+    'nossa',
+    'nossos',
+    'nossas',
+    'este',
+    'esta',
+    'estes',
+    'estas',
+    'esse',
+    'essa',
+    'esses',
+    'essas',
+    'aquele',
+    'aquela',
+    'aqueles',
+    'aquelas',
+    'isto',
+    'isso',
+    'aquilo',
+    'this',
+    'that',
+    'é',
+    'foi',
+    'ser',
+    'são',
+    'era',
+    'eram',
+    'está',
+    'estão',
+    'estava',
+    'estavam',
+    'ter',
+    'tem',
+    'têm',
+    'tinha',
+    'tinham',
+    'há',
+    'havia',
+    'seja',
+    'sejam',
+    'será',
+    'serão',
+    'sido',
+    'sendo',
+    'estar',
+    'estado',
+    'faz',
+    'fazer',
+    'não',
+    'sim',
+    'mais',
+    'menos',
+    'muito',
+    'muita',
+    'muitos',
+    'muitas',
+    'pouco',
+    'pouca',
+    'poucos',
+    'poucas',
+    'já',
+    'ainda',
+    'também',
+    'só',
+    'apenas',
+    'bem',
+    'mal',
+    'assim',
+    'aqui',
+    'ali',
+    'lá',
+    'onde',
+    'aonde',
+    'cá',
+    'então',
+    'enquanto',
+    'embora',
+    'caso',
+    'cada',
+    'todo',
+    'toda',
+    'todos',
+    'todas',
+    'outro',
+    'outra',
+    'outros',
+    'outras',
+    'algum',
+    'alguma',
+    'alguns',
+    'algumas',
+    'nenhum',
+    'nenhuma',
+    'qualquer',
+    'quaisquer',
+    'meu',
+    'seu',
+    'dele',
+    'dela',
+    'deles',
+    'delas',
+    'lhe',
+    'consigo',
+    'si',
+    'vossa',
+    'vosso',
+    'ao',
+    'aos',
+    'à',
+    'às',
+    'pelo',
+    'pela',
+    'pelos',
+    'pelas',
+    'num',
+    'numa',
+    'nuns',
+    'numas',
+    'dum',
+    'duma',
+    'qual',
+    'quais',
+    'quem',
+    'cujo',
+    'cuja',
+    'cujos',
+    'cujas',
+    'tão',
+    'tal',
+    'tanto',
+    'tanta',
+    'tantos',
+    'tantas',
+    'sob',
+    'sobre',
+    'as',
+    'os',
+    'um',
+    'uma',
+    'foi',
+    'ser',
+    'ter',
+    'vai',
+    'vou',
+    'vem',
+    'vir',
+    'quer',
+    'ver',
+    'dar',
+    'deu',
+    'dá',
+    'dão',
+    'fui',
+    'foi',
+    'isso',
+    'isto',
+    'aqui',
+    'lá',
+    'cá',
+    'aí',
+    'né',
+    'tá',
+    'tô',
+    'num',
+    'numas',
+    'dum',
+    'duma',
     // pronomes pessoais e de tratamento
-    'você','voce','vocês','voces','vc','vcs','te','ti','si',
+    'você',
+    'voce',
+    'vocês',
+    'voces',
+    'vc',
+    'vcs',
+    'te',
+    'ti',
+    'si',
     // indefinidos e quantificadores genéricos
-    'tudo','mesmo','mesma','mesmos','mesmas',
+    'tudo',
+    'mesmo',
+    'mesma',
+    'mesmos',
+    'mesmas',
     //!!! 'quanto','quanta','quantos','quantas',
     // advérbios genéricos de tempo
     //!!! 'agora','depois','antes','sempre','nunca','jamais','talvez','quase','logo',
@@ -39,21 +276,26 @@ const STOPWORDS = new Set([
 function limparTexto(texto) {
     if (!texto) return '';
     return texto
-        .replace(/<[^>]+>/g, ' ')      // remove tags HTML (divs/spans de formatação do editor)
+        .replace(/<[^>]+>/g, ' ') // remove tags HTML (divs/spans de formatação do editor)
         .replace(/&nbsp;/g, ' ')
         .replace(/&[a-z]+;/g, ' ');
 }
 
 function tokenizar(texto) {
-    return limparTexto(texto)
-        .toLowerCase()
-        .normalize('NFC')
-        .match(/[a-zà-úçãõâêîôû]+/g) || [];
+    return (
+        limparTexto(texto)
+            .toLowerCase()
+            .normalize('NFC')
+            .match(/[a-zà-úçãõâêîôû]+/g) || []
+    );
 }
 
 function listaDeCampo(valor) {
     if (!valor) return [];
-    return valor.split(',').map(s => s.trim()).filter(Boolean);
+    return valor
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
 }
 
 // ─── Resolução de Livro (pra agrupar Por Livro / Por Ano) ──────
@@ -61,14 +303,14 @@ function listaDeCampo(valor) {
 function livroIdDoItem(item) {
     if (item.paiTipo === 'livro') return item.paiId;
     if (item.paiTipo === 'parte') {
-        const p = db.partes.find(x => x.id == item.paiId);
+        const p = db.partes.find((x) => x.id == item.paiId);
         return p ? p.livroId : null;
     }
     if (item.paiTipo === 'secao') {
-        const s = db.secoes.find(x => x.id == item.paiId);
+        const s = db.secoes.find((x) => x.id == item.paiId);
         if (!s) return null;
         if (s.paiTipo === 'parte') {
-            const p = db.partes.find(x => x.id == s.paiId);
+            const p = db.partes.find((x) => x.id == s.paiId);
             return p ? p.livroId : null;
         }
         return s.paiId;
@@ -84,59 +326,75 @@ function todosOsTextos() {
 
 export function contarPorAno() {
     const contagem = {};
-    todosOsTextos().forEach(t => {
+    todosOsTextos().forEach((t) => {
         const ano = parseInt(t.ano);
         if (!ano) return;
         contagem[ano] = (contagem[ano] || 0) + 1;
     });
-    const anos = Object.keys(contagem).map(Number).sort((a, b) => a - b);
-    return { labels: anos.map(String), data: anos.map(a => contagem[a]) };
+    const anos = Object.keys(contagem)
+        .map(Number)
+        .sort((a, b) => a - b);
+    return { labels: anos.map(String), data: anos.map((a) => contagem[a]) };
 }
 
 export function contarPorLivro() {
     const contagem = {};
-    todosOsTextos().forEach(t => {
+    todosOsTextos().forEach((t) => {
         const livroId = livroIdDoItem(t);
-        const livro = livroId ? db.livros.find(l => l.id == livroId) : null;
-        const nome = livro ? (livro.siglaOficial || livro.siglaPessoal || livro.titulo) : 'Avulso';
+        const livro = livroId ? db.livros.find((l) => l.id == livroId) : null;
+        const nome = livro ? livro.siglaOficial || livro.siglaPessoal || livro.titulo : 'Avulso';
         contagem[nome] = (contagem[nome] || 0) + 1;
     });
-    (db.coletaneas || []).forEach(c => {
-        const qtd = (db.itensColetanea || []).filter(i => String(i.coletaneaId) === String(c.id)).length;
+    (db.coletaneas || []).forEach((c) => {
+        const qtd = (db.itensColetanea || []).filter(
+            (i) => String(i.coletaneaId) === String(c.id),
+        ).length;
         if (qtd > 0) contagem[`${c.titulo}`] = qtd;
     });
     // Coletâneas reais vivem em db.livros (tipo === 'Coletânea'); cada uma tem
     // Partes (db.partes, livroId = id da coletânea) e cada Parte tem Itens em
     // db.itensColetanea (parteId). O campo db.coletaneas acima é legado e
     // nunca é preenchido pela aba Coletâneas — mantido só por compatibilidade.
-    db.livros.filter(l => l.tipo === 'Coletânea').forEach(col => {
-        const partesIds = db.partes.filter(p => p.livroId == col.id).map(p => String(p.id));
-        const qtd = (db.itensColetanea || []).filter(i => partesIds.includes(String(i.parteId))).length;
-        if (qtd > 0) {
-            const sigla = col.siglaOficial || col.siglaPessoal || col.titulo;
-            contagem[`${sigla}`] = qtd;
-        }
-    });
+    db.livros
+        .filter((l) => l.tipo === 'Coletânea')
+        .forEach((col) => {
+            const partesIds = db.partes.filter((p) => p.livroId == col.id).map((p) => String(p.id));
+            const qtd = (db.itensColetanea || []).filter((i) =>
+                partesIds.includes(String(i.parteId)),
+            ).length;
+            if (qtd > 0) {
+                const sigla = col.siglaOficial || col.siglaPessoal || col.titulo;
+                contagem[`${sigla}`] = qtd;
+            }
+        });
     const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
-    return { labels: ordenado.map(o => o[0]), data: ordenado.map(o => o[1]) };
+    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
 export function contarPorTema(top = 12) {
     const contagem = {};
-    todosOsTextos().forEach(t => {
-        listaDeCampo(t.sinalizacoes).forEach(tag => { contagem[tag] = (contagem[tag] || 0) + 1; });
+    todosOsTextos().forEach((t) => {
+        listaDeCampo(t.sinalizacoes).forEach((tag) => {
+            contagem[tag] = (contagem[tag] || 0) + 1;
+        });
     });
-    const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, top);
-    return { labels: ordenado.map(o => o[0]), data: ordenado.map(o => o[1]) };
+    const ordenado = Object.entries(contagem)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, top);
+    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
 export function contarPorPessoa(top = 12) {
     const contagem = {};
-    todosOsTextos().forEach(t => {
-        listaDeCampo(t.pessoas).forEach(nome => { contagem[nome] = (contagem[nome] || 0) + 1; });
+    todosOsTextos().forEach((t) => {
+        listaDeCampo(t.pessoas).forEach((nome) => {
+            contagem[nome] = (contagem[nome] || 0) + 1;
+        });
     });
-    const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, top);
-    return { labels: ordenado.map(o => o[0]), data: ordenado.map(o => o[1]) };
+    const ordenado = Object.entries(contagem)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, top);
+    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
 export function palavrasMaisFrequentes(livroId = '', top = 40) {
@@ -144,32 +402,39 @@ export function palavrasMaisFrequentes(livroId = '', top = 40) {
     if (!livroId) {
         textos = todosOsTextos();
     } else {
-        const livroSel = db.livros.find(l => String(l.id) === String(livroId));
+        const livroSel = db.livros.find((l) => String(l.id) === String(livroId));
         if (livroSel && livroSel.tipo === 'Coletânea') {
             // Coletâneas: textos estão em db.itensColetanea referenciando poemas/prosas por refId
             const partesIds = db.partes
-                .filter(p => String(p.livroId) === String(livroId))
-                .map(p => String(p.id));
-            const refs = (db.itensColetanea || [])
-                .filter(i => partesIds.includes(String(i.parteId)) && i.refId && i.refTipo);
-            textos = refs.map(i => {
-                if (i.textoOverride) return { texto: i.textoOverride };
-                const col = db[i.refTipo + 's'];
-                return col?.find(x => x.id == i.refId) || null;
-            }).filter(Boolean);
+                .filter((p) => String(p.livroId) === String(livroId))
+                .map((p) => String(p.id));
+            const refs = (db.itensColetanea || []).filter(
+                (i) =>
+                    partesIds.includes(String(i.parteId)) &&
+                    (i.textoOverride || (i.refId && i.refTipo)),
+            );
+            textos = refs
+                .map((i) => {
+                    if (i.textoOverride) return { texto: i.textoOverride };
+                    const col = db[i.refTipo + 's'];
+                    return col?.find((x) => x.id == i.refId) || null;
+                })
+                .filter(Boolean);
         } else {
-            textos = todosOsTextos().filter(t => String(livroIdDoItem(t)) === String(livroId));
+            textos = todosOsTextos().filter((t) => String(livroIdDoItem(t)) === String(livroId));
         }
     }
 
     const contagem = {};
-    textos.forEach(t => {
-        tokenizar(t.texto).forEach(palavra => {
+    textos.forEach((t) => {
+        tokenizar(t.texto).forEach((palavra) => {
             if (palavra.length < 3 || STOPWORDS.has(palavra)) return;
             contagem[palavra] = (contagem[palavra] || 0) + 1;
         });
     });
-    return Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, top);
+    return Object.entries(contagem)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, top);
 }
 
 export function resumoGeral() {
@@ -192,7 +457,7 @@ export function resumoGeral() {
         totalPalavras,
         mediaPalavras: textos.length ? Math.round(totalPalavras / textos.length) : 0,
         anoMaisProdutivo,
-        livroComMais
+        livroComMais,
     };
 }
 
@@ -202,7 +467,7 @@ const graficos = {}; // guarda instâncias do Chart.js pra poder destruir/recria
 
 // Filtra { labels, data } mantendo só os pares cujo valor está dentro do
 // intervalo [min, max]. min/max vazios (null/'') = sem limite naquele lado.
-function filtrarPorIntervalo({ labels, data }, min, max) {
+export function filtrarPorIntervalo({ labels, data }, min, max) {
     const temMin = min !== null && min !== '' && !isNaN(min);
     const temMax = max !== null && max !== '' && !isNaN(max);
     if (!temMin && !temMax) return { labels, data };
@@ -232,7 +497,7 @@ function coresGrafico() {
     const escuro = document.documentElement.classList.contains('dark');
     return {
         texto: escuro ? '#94a3b8' : '#374151',
-        grade: escuro ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)'
+        grade: escuro ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)',
     };
 }
 
@@ -267,9 +532,13 @@ function criarBarChart(canvasId, labels, data, cor) {
             plugins: { legend: { display: false } },
             scales: {
                 x: { ticks: { color: cores.texto }, grid: { color: cores.grade } },
-                y: { beginAtZero: true, ticks: { precision: 0, color: cores.texto }, grid: { color: cores.grade } }
-            }
-        }
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: cores.texto },
+                    grid: { color: cores.grade },
+                },
+            },
+        },
     });
 }
 
@@ -284,35 +553,42 @@ function renderResumo() {
         ['Palavras (total)', r.totalPalavras.toLocaleString('pt-BR')],
         ['Média de palavras/texto', r.mediaPalavras],
         ['Ano mais produtivo', r.anoMaisProdutivo],
-        ['Livro com mais textos', r.livroComMais]
+        ['Livro com mais textos', r.livroComMais],
     ];
 
-    container.innerHTML = cartoes.map(([rotulo, valor]) => `
+    container.innerHTML = cartoes
+        .map(
+            ([rotulo, valor]) => `
         <div class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 text-center">
             <div class="text-2xl font-black text-blue-700 dark:text-blue-300">${escapeHtml(valor)}</div>
             <div class="text-[10px] uppercase text-gray-400 dark:text-slate-500 font-bold mt-1">${rotulo}</div>
-        </div>`).join('');
+        </div>`,
+        )
+        .join('');
 }
 
 function popularSeletorLivroPalavras() {
     const sel = document.getElementById('est-livro-palavras');
     if (!sel) return;
     const valorAtual = sel.value;
-    const livrosComuns = db.livros.filter(l => l.tipo !== 'Coletânea');
-    const coletaneas   = db.livros.filter(l => l.tipo === 'Coletânea');
-    const label = l => escapeHtml(l.siglaOficial || l.siglaPessoal || l.titulo);
-    sel.innerHTML = '<option value="">-- Todo o acervo --</option>' +
+    const livrosComuns = db.livros.filter((l) => l.tipo !== 'Coletânea');
+    const coletaneas = db.livros.filter((l) => l.tipo === 'Coletânea');
+    const label = (l) => escapeHtml(l.siglaOficial || l.siglaPessoal || l.titulo);
+    sel.innerHTML =
+        '<option value="">-- Todo o acervo --</option>' +
         (livrosComuns.length
             ? '<optgroup label="Livros">' +
-              livrosComuns.map(l => `<option value="${l.id}">${label(l)}</option>`).join('') +
+              livrosComuns.map((l) => `<option value="${l.id}">${label(l)}</option>`).join('') +
               '</optgroup>'
             : '') +
         (coletaneas.length
             ? '<optgroup label="Coletâneas">' +
-              coletaneas.map(l => `<option value="${l.id}">${label(l)} (col.)</option>`).join('') +
+              coletaneas
+                  .map((l) => `<option value="${l.id}">${label(l)} (col.)</option>`)
+                  .join('') +
               '</optgroup>'
             : '');
-    if (Array.from(sel.options).some(o => o.value === valorAtual)) sel.value = valorAtual;
+    if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
 function renderListaPalavras() {
@@ -322,11 +598,15 @@ function renderListaPalavras() {
     const palavras = palavrasMaisFrequentes(livroId, 40);
 
     container.innerHTML = palavras.length
-        ? palavras.map(([palavra, n], i) => `
+        ? palavras
+              .map(
+                  ([palavra, n], i) => `
             <div class="flex justify-between items-center px-2 py-1 rounded ${i < 3 ? 'bg-blue-50 dark:bg-blue-950' : ''}">
                 <span class="text-gray-700 dark:text-slate-200">${escapeHtml(palavra)}</span>
                 <span class="text-gray-400 dark:text-slate-500 font-mono text-xs">${n}</span>
-            </div>`).join('')
+            </div>`,
+              )
+              .join('')
         : '<p class="text-gray-400 dark:text-slate-500 col-span-full">Sem texto suficiente pra analisar ainda.</p>';
 }
 

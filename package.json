@@ -1,0 +1,20 @@
+{
+    "name": "arquivo-poetico",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "node --test",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.8.0",
+        "eslint-config-prettier": "^10.1.8",
+        "globals": "^17.7.0",
+        "happy-dom": "^20.11.1",
+        "prettier": "^3.9.6"
+    }
+}

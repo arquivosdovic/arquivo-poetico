@@ -18,7 +18,10 @@ import { escapeHtml, mostrarAviso } from './utils.js';
 
 function listaDeCampo(valor) {
     if (!valor) return [];
-    return valor.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    return valor
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
 }
 
 // Preenche os checkboxes de Livros e Coletâneas na aba de exportação.
@@ -26,31 +29,41 @@ function listaDeCampo(valor) {
 export function popularSelecaoExportacao() {
     const livrosContainer = document.getElementById('exp-livros-checks');
     if (livrosContainer) {
-        const livros = db.livros.filter(l => l.tipo !== 'Coletânea');
+        const livros = db.livros.filter((l) => l.tipo !== 'Coletânea');
         livrosContainer.innerHTML = livros.length
-            ? livros.map(l => `
+            ? livros
+                  .map(
+                      (l) => `
                 <label class="flex items-center gap-1.5">
                     <input type="checkbox" class="exp-livro-check" value="${l.id}" style="width:auto;margin:0;">
                     ${escapeHtml(l.titulo)}
-                </label>`).join('')
+                </label>`,
+                  )
+                  .join('')
             : '<span class="text-gray-400 dark:text-slate-500 text-xs">Nenhum livro cadastrado.</span>';
     }
 
     const coletaneasContainer = document.getElementById('exp-coletaneas-checks');
     if (coletaneasContainer) {
-        const coletaneas = db.livros.filter(l => l.tipo === 'Coletânea');
+        const coletaneas = db.livros.filter((l) => l.tipo === 'Coletânea');
         coletaneasContainer.innerHTML = coletaneas.length
-            ? coletaneas.map(c => `
+            ? coletaneas
+                  .map(
+                      (c) => `
                 <label class="flex items-center gap-1.5">
                     <input type="checkbox" class="exp-coletanea-check" value="${c.id}" style="width:auto;margin:0;">
                     ${escapeHtml(c.titulo)}
-                </label>`).join('')
+                </label>`,
+                  )
+                  .join('')
             : '<span class="text-gray-400 dark:text-slate-500 text-xs">Nenhuma coletânea cadastrada.</span>';
     }
 }
 
 function idsMarcados(classeCheckbox) {
-    return Array.from(document.querySelectorAll(`.${classeCheckbox}:checked`)).map(el => el.value);
+    return Array.from(document.querySelectorAll(`.${classeCheckbox}:checked`)).map(
+        (el) => el.value,
+    );
 }
 
 function lerDataFiltro(prefixo) {
@@ -65,16 +78,16 @@ function lerFiltrosDoFormulario() {
     return {
         tipos: [
             ...(document.getElementById('exp-tipo-poema')?.checked ? ['poema'] : []),
-            ...(document.getElementById('exp-tipo-prosa')?.checked ? ['prosa'] : [])
+            ...(document.getElementById('exp-tipo-prosa')?.checked ? ['prosa'] : []),
         ],
         pessoasIncluir: listaDeCampo(document.getElementById('exp-pessoas-incluir')?.value),
-        temasIncluir:   listaDeCampo(document.getElementById('exp-temas-incluir')?.value),
-        temasExcluir:   listaDeCampo(document.getElementById('exp-temas-excluir')?.value),
-        dataDe:  lerDataFiltro('exp-data-de'),
+        temasIncluir: listaDeCampo(document.getElementById('exp-temas-incluir')?.value),
+        temasExcluir: listaDeCampo(document.getElementById('exp-temas-excluir')?.value),
+        dataDe: lerDataFiltro('exp-data-de'),
         dataAte: lerDataFiltro('exp-data-ate'),
         status: document.getElementById('exp-status')?.value || 'todos',
         livrosIncluir: idsMarcados('exp-livro-check'),
-        coletaneasIncluir: idsMarcados('exp-coletanea-check')
+        coletaneasIncluir: idsMarcados('exp-coletanea-check'),
     };
 }
 
@@ -100,7 +113,7 @@ function precisaoFiltro(d) {
     if (!d) return 0;
     if (d.dia) return 3; // dia+mês+ano
     if (d.mes) return 2; // mês+ano
-    return 1;            // só ano
+    return 1; // só ano
 }
 
 // Verifica se o mês inicial do filtro está totalmente coberto
@@ -120,14 +133,14 @@ function mesFinalCoberto(dataAte) {
 // Compara a dataEscrita de um item com o intervalo [dataDe, dataAte].
 // Retorna true se o item está dentro do intervalo, respeitando
 // a lógica de meses do meio sempre cobertos.
-function dataEstaNoIntervalo(dataItem, dataDe, dataAte) {
+export function dataEstaNoIntervalo(dataItem, dataDe, dataAte) {
     // Sem filtro de data → passa tudo
     if (!dataDe && !dataAte) return true;
     // Item sem nenhuma data → não passa filtro de data
     if (!dataItem || !dataItem.ano) return false;
 
     const precFiltro = Math.max(precisaoFiltro(dataDe), precisaoFiltro(dataAte));
-    const precItem   = dataItem.dia ? 3 : dataItem.mes ? 2 : 1;
+    const precItem = dataItem.dia ? 3 : dataItem.mes ? 2 : 1;
 
     // Se o filtro tem mais precisão que o item, só inclui se o mês
     // do item for "mês do meio" (totalmente coberto pelos dois extremos).
@@ -136,8 +149,8 @@ function dataEstaNoIntervalo(dataItem, dataDe, dataAte) {
         const itemMes = dataItem.mes || 0;
         const itemAnoMes = dataItem.ano * 100 + itemMes;
 
-        const deMes  = dataDe  ? (dataDe.ano  * 100 + (dataDe.mes  || 1))  : -Infinity;
-        const ateMes = dataAte ? (dataAte.ano * 100 + (dataAte.mes || 12)) : Infinity;
+        const deMes = dataDe ? dataDe.ano * 100 + (dataDe.mes || 1) : -Infinity;
+        const ateMes = dataAte ? dataAte.ano * 100 + (dataAte.mes || 12) : Infinity;
 
         // Mês do meio: estritamente entre as pontas
         const ehMeioEstrito = itemAnoMes > deMes && itemAnoMes < ateMes;
@@ -154,32 +167,32 @@ function dataEstaNoIntervalo(dataItem, dataDe, dataAte) {
 
     // Item tem precisão suficiente: comparação numérica direta
     const itemNum = dataParaNumero(dataItem, true);
-    const deNum   = dataParaNumero(dataDe,   true);
-    const ateNum  = dataParaNumero(dataAte,  false);
+    const deNum = dataParaNumero(dataDe, true);
+    const ateNum = dataParaNumero(dataAte, false);
 
     return itemNum >= deNum && itemNum <= ateNum;
 }
 
-function correspondeFiltro(item, opcoes) {
+export function correspondeFiltro(item, opcoes) {
     if (opcoes.livrosIncluir.length) {
         const livroId = livroIdDoItem(item, db);
         if (!livroId || !opcoes.livrosIncluir.includes(String(livroId))) return false;
     }
     if (opcoes.pessoasIncluir.length) {
         const pessoasItem = listaDeCampo(item.pessoas);
-        if (!opcoes.pessoasIncluir.some(p => pessoasItem.includes(p))) return false;
+        if (!opcoes.pessoasIncluir.some((p) => pessoasItem.includes(p))) return false;
     }
     if (opcoes.temasIncluir.length) {
         const temasItem = listaDeCampo(item.sinalizacoes);
-        if (!opcoes.temasIncluir.some(t => temasItem.includes(t))) return false;
+        if (!opcoes.temasIncluir.some((t) => temasItem.includes(t))) return false;
     }
     if (opcoes.temasExcluir.length) {
         const temasItem = listaDeCampo(item.sinalizacoes);
-        if (opcoes.temasExcluir.some(t => temasItem.includes(t))) return false;
+        if (opcoes.temasExcluir.some((t) => temasItem.includes(t))) return false;
     }
     if (!dataEstaNoIntervalo(item.dataEscrita, opcoes.dataDe, opcoes.dataAte)) return false;
     if (opcoes.status === 'publicados' && !item.publicado) return false;
-    if (opcoes.status === 'rascunhos'  &&  item.publicado) return false;
+    if (opcoes.status === 'rascunhos' && item.publicado) return false;
     return true;
 }
 
@@ -187,14 +200,14 @@ function correspondeFiltro(item, opcoes) {
 function livroIdDoItem(item, db) {
     if (item.paiTipo === 'livro') return item.paiId;
     if (item.paiTipo === 'parte') {
-        const p = db.partes.find(x => x.id == item.paiId);
+        const p = db.partes.find((x) => x.id == item.paiId);
         return p ? p.livroId : null;
     }
     if (item.paiTipo === 'secao') {
-        const s = db.secoes.find(x => x.id == item.paiId);
+        const s = db.secoes.find((x) => x.id == item.paiId);
         if (!s) return null;
         if (s.paiTipo === 'parte') {
-            const p = db.partes.find(x => x.id == s.paiId);
+            const p = db.partes.find((x) => x.id == s.paiId);
             return p ? p.livroId : null;
         }
         return s.paiId;
@@ -205,21 +218,23 @@ function livroIdDoItem(item, db) {
 // Resolve o contexto (títulos de Livro/Parte/Seção) de um item,
 // pra que cada registro exportado seja autoexplicativo por si só.
 function resolverContexto(item) {
-    let livro = null, parte = null, secao = null;
+    let livro = null,
+        parte = null,
+        secao = null;
 
     if (item.paiTipo === 'livro') {
-        livro = db.livros.find(l => l.id == item.paiId);
+        livro = db.livros.find((l) => l.id == item.paiId);
     } else if (item.paiTipo === 'parte') {
-        parte = db.partes.find(p => p.id == item.paiId);
-        if (parte) livro = db.livros.find(l => l.id == parte.livroId);
+        parte = db.partes.find((p) => p.id == item.paiId);
+        if (parte) livro = db.livros.find((l) => l.id == parte.livroId);
     } else if (item.paiTipo === 'secao') {
-        secao = db.secoes.find(s => s.id == item.paiId);
+        secao = db.secoes.find((s) => s.id == item.paiId);
         if (secao) {
             if (secao.paiTipo === 'parte') {
-                parte = db.partes.find(p => p.id == secao.paiId);
-                if (parte) livro = db.livros.find(l => l.id == parte.livroId);
+                parte = db.partes.find((p) => p.id == secao.paiId);
+                if (parte) livro = db.livros.find((l) => l.id == parte.livroId);
             } else {
-                livro = db.livros.find(l => l.id == secao.paiId);
+                livro = db.livros.find((l) => l.id == secao.paiId);
             }
         }
     }
@@ -227,7 +242,7 @@ function resolverContexto(item) {
     return {
         livro: livro?.titulo || null,
         parte: parte?.titulo || null,
-        secao: secao?.titulo || null
+        secao: secao?.titulo || null,
     };
 }
 
@@ -238,17 +253,21 @@ function montarRegistro(tipo, item) {
     return {
         ...item,
         tipo,
-        contexto: resolverContexto(item)
+        contexto: resolverContexto(item),
     };
 }
 
 export function gerarExportacaoSeletiva(opcoes) {
     const itens = [];
     if (opcoes.tipos.includes('poema')) {
-        db.poemas.filter(p => correspondeFiltro(p, opcoes)).forEach(p => itens.push(montarRegistro('poema', p)));
+        db.poemas
+            .filter((p) => correspondeFiltro(p, opcoes))
+            .forEach((p) => itens.push(montarRegistro('poema', p)));
     }
     if (opcoes.tipos.includes('prosa')) {
-        db.prosas.filter(p => correspondeFiltro(p, opcoes)).forEach(p => itens.push(montarRegistro('prosa', p)));
+        db.prosas
+            .filter((p) => correspondeFiltro(p, opcoes))
+            .forEach((p) => itens.push(montarRegistro('prosa', p)));
     }
 
     // Coletâneas selecionadas entram com o conteúdo completo já resolvido
@@ -258,7 +277,7 @@ export function gerarExportacaoSeletiva(opcoes) {
     // ou pro texto exclusivo (textoOverride) — é o mesmo modelo de dados que a
     // aba Coletâneas usa, diferente da árvore Livro→Parte→Seção→Poema normal.
     const coletaneas = (opcoes.coletaneasIncluir || [])
-        .map(colId => exportarColetaneaResolvida(colId))
+        .map((colId) => exportarColetaneaResolvida(colId))
         .filter(Boolean);
 
     return { itens, coletaneas };
@@ -269,8 +288,10 @@ export function previsualizarExportacaoSeletiva() {
     const { itens, coletaneas } = gerarExportacaoSeletiva(opcoes);
     const span = document.getElementById('exp-resultado');
     if (span) {
-        span.innerText = `${itens.length} poema(s)/prosa(s)` +
-            (coletaneas.length ? ` + ${coletaneas.length} coletânea(s)` : '') + ' encontrado(s).';
+        span.innerText =
+            `${itens.length} poema(s)/prosa(s)` +
+            (coletaneas.length ? ` + ${coletaneas.length} coletânea(s)` : '') +
+            ' encontrado(s).';
     }
 }
 
@@ -285,15 +306,20 @@ export function executarExportacaoSeletiva() {
     }
 
     const saida = { export_format: 'exportacao_seletiva', itens, coletaneas };
-    const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const blob = new Blob([JSON.stringify(saida, null, 4)], {
+        type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
     a.download = `exportacao_seletiva_${Date.now()}.json`;
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
 
     const span = document.getElementById('exp-resultado');
     if (span) {
@@ -315,22 +341,28 @@ export function exportarLivrosCompletos() {
     }
 
     import('./nesting.js').then(({ buildNestingLivro }) => {
-        const livros = ids
-            .map(id => buildNestingLivro(db, id))
-            .filter(Boolean);
+        const livros = ids.map((id) => buildNestingLivro(db, id)).filter(Boolean);
 
-        if (livros.length === 0) { mostrarAviso('Nenhum dos livros marcados foi encontrado.'); return; }
+        if (livros.length === 0) {
+            mostrarAviso('Nenhum dos livros marcados foi encontrado.');
+            return;
+        }
 
         const saida = { livros };
-        const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        const blob = new Blob([JSON.stringify(saida, null, 4)], {
+            type: 'application/json;charset=utf-8',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
         a.download = `livros_completos_${Date.now()}.json`;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
 
         const span = document.getElementById('exp-resultado');
         if (span) span.innerText = `${livros.length} livro(s) completo(s) exportado(s).`;
@@ -355,18 +387,27 @@ export function exportarLivroCompleto(livroId) {
         }
 
         const nomeArquivo = (livro.titulo || `livro_${livroId}`)
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_').toLowerCase();
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\w\- ]+/g, '')
+            .trim()
+            .replace(/\s+/g, '_')
+            .toLowerCase();
 
-        const blob = new Blob([JSON.stringify(livro, null, 4)], { type: 'application/json;charset=utf-8' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        const blob = new Blob([JSON.stringify(livro, null, 4)], {
+            type: 'application/json;charset=utf-8',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
         a.download = `${nomeArquivo || 'livro'}_${Date.now()}.json`;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
     });
 }
 
@@ -377,34 +418,40 @@ window.addEventListener('db:saved', popularSelecaoExportacao);
 // Gera a mesma estrutura profunda (Livro → Parte → Seção → Poema) que o
 // encadeia.html produzia, mas sem precisar sair do app principal.
 export function exportarTudoAninhado() {
-    Promise.all([import('./nesting.js'), import('./coletaneas.js')])
-        .then(([{ buildNesting }, { exportarColetaneaResolvida }]) => {
+    Promise.all([import('./nesting.js'), import('./coletaneas.js')]).then(
+        ([{ buildNesting }, { exportarColetaneaResolvida }]) => {
             const nesting = buildNesting(db);
 
             // Coletâneas vivem em db.livros (tipo === 'Coletânea'), com Partes
             // (db.partes) e Itens (db.itensColetanea) — não em db.coletaneas
             // (campo legado, nunca preenchido pela aba Coletâneas atual).
             const coletaneas = db.livros
-                .filter(l => l.tipo === 'Coletânea')
-                .map(col => exportarColetaneaResolvida(col.id))
+                .filter((l) => l.tipo === 'Coletânea')
+                .map((col) => exportarColetaneaResolvida(col.id))
                 .filter(Boolean);
 
             const saida = { ...nesting, coletaneas };
 
-            const blob = new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
+            const blob = new Blob([JSON.stringify(saida, null, 4)], {
+                type: 'application/json;charset=utf-8',
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
             a.download = `arquivo_poetico_aninhado_${Date.now()}.json`;
             document.body.appendChild(a);
             a.click();
-            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
 
             const span = document.getElementById('exp-resultado');
             if (span) {
                 const totalTextos = (db.poemas?.length || 0) + (db.prosas?.length || 0);
                 span.innerText = `Estrutura completa aninhada exportada (${db.livros?.length || 0} livro(s), ${totalTextos} texto(s)).`;
             }
-        });
+        },
+    );
 }

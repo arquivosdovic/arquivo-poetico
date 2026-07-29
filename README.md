@@ -24,33 +24,43 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 ## Capturas de tela
 
 ### Livros
+
 ![Aba Livros](assets/screenshots/livros.png)
 
 ### Coletâneas
+
 ![Aba Coletâneas](assets/screenshots/coletaneas.png)
 
 ### Partes
+
 ![Aba Partes](assets/screenshots/partes.png)
 
 ### Seções
+
 ![Aba Seções](assets/screenshots/secoes.png)
 
 ### Poemas
+
 ![Aba Poemas](assets/screenshots/poemas.png)
 
 ### Prosas
+
 ![Aba Prosas](assets/screenshots/prosas.png)
 
 ### Elementos
+
 ![Aba Elementos](assets/screenshots/elementos.png)
 
 ### Estrutura
+
 ![Aba Estrutura](assets/screenshots/estrutura.png)
 
 ### Exportar
+
 ![Aba Exportar](assets/screenshots/exportar.png)
 
 ### Estatísticas
+
 ![Aba Estatísticas](assets/screenshots/estatisticas.png)
 
 ---
@@ -172,12 +182,12 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 O app gera quatro tipos distintos de JSON, cada um com um campo `export_format`
 que identifica o formato:
 
-| `export_format` | Gerado por | Estrutura |
-|---|---|---|
-| _(ausente)_ | "Baixar JSON" no header | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }` |
+| `export_format`       | Gerado por                              | Estrutura                                                                                                      |
+| --------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| _(ausente)_           | "Baixar JSON" no header                 | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                             |
 | `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo" | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido |
-| `deep_nesting` | "Exportar tudo aninhado" | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }` |
-| _(livro individual)_ | "Baixar este livro completo" | Objeto único de livro com toda a árvore aninhada |
+| `deep_nesting`        | "Exportar tudo aninhado"                | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                            |
+| _(livro individual)_  | "Baixar este livro completo"            | Objeto único de livro com toda a árvore aninhada                                                               |
 
 ---
 
@@ -187,16 +197,16 @@ Os dados vivem em dois lugares distintos no navegador:
 
 ### localStorage (`arquivoPoetico_v3`)
 
-| Campo | Descrição |
-|---|---|
-| `livros` | Livros e Coletâneas (distinguidos por `tipo`). O campo `capa` é um ID de referência ao IndexedDB, não base64. |
-| `partes` | Partes de Livros e de Coletâneas (distinguidas por `livroId`). |
-| `secoes` | Seções vinculadas a um Livro ou Parte (`paiTipo`/`paiId`). |
-| `poemas` | Poemas, com vínculo opcional a Livro/Parte/Seção (`paiTipo`/`paiId`). |
-| `prosas` | Prosas, mesma estrutura dos Poemas. |
-| `elementos` | Elementos Textuais (introdução, multimídia, respiro, posfácio…). |
+| Campo            | Descrição                                                                                                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `livros`         | Livros e Coletâneas (distinguidos por `tipo`). O campo `capa` é um ID de referência ao IndexedDB, não base64.             |
+| `partes`         | Partes de Livros e de Coletâneas (distinguidas por `livroId`).                                                            |
+| `secoes`         | Seções vinculadas a um Livro ou Parte (`paiTipo`/`paiId`).                                                                |
+| `poemas`         | Poemas, com vínculo opcional a Livro/Parte/Seção (`paiTipo`/`paiId`).                                                     |
+| `prosas`         | Prosas, mesma estrutura dos Poemas.                                                                                       |
+| `elementos`      | Elementos Textuais (introdução, multimídia, respiro, posfácio…).                                                          |
 | `itensColetanea` | Itens de Coletânea: referenciam um Poema/Prosa existente (`refId`/`refTipo`) ou trazem texto exclusivo (`textoOverride`). |
-| `coletaneas` | **Legado** — não é preenchido pela aba atual; mantido só para compatibilidade ao importar backups antigos. |
+| `coletaneas`     | **Legado** — não é preenchido pela aba atual; mantido só para compatibilidade ao importar backups antigos.                |
 
 ### IndexedDB (`arquivoPoetico_capas`)
 
@@ -226,9 +236,9 @@ e **nunca sai no JSON exportado**.
 
 O app usa dois mecanismos diferentes que poderiam ser confundidos:
 
-- **Exportação seletiva** (aba Exportação): filtra *quais* itens entram no
+- **Exportação seletiva** (aba Exportação): filtra _quais_ itens entram no
   JSON, por pessoa, tema, data, status ou livro. Não altera nenhum texto.
-- **Versões Alternativas** (`filtrar.html`): substitui o *conteúdo* de textos
+- **Versões Alternativas** (`filtrar.html`): substitui o _conteúdo_ de textos
   sensíveis por versões limpas. Não filtra quais itens aparecem.
 
 ### Formatos de JSON aceitos no upload

@@ -16,21 +16,21 @@ const LS_PREFIX = 'arquivoPoetico_colunas_';
 // (mantidas ativas de cara); as demais começam desligadas.
 export const DEFINICAO_COLUNAS = {
     poemas: [
-        { key: 'dataEscrita',     label: 'Escrito em',  default: true  },
-        { key: 'dataPublicacao',  label: 'Publicação',  default: true  },
-        { key: 'estrutura',       label: 'Estrutura',   default: true  },
-        { key: 'status',          label: 'Status',      default: true  },
-        { key: 'elos',            label: 'Elos',        default: false },
-        { key: 'referencias',     label: 'Referências', default: false },
-        { key: 'etiquetas',       label: 'Etiquetas',   default: false },
-        { key: 'notas',           label: 'Notas',       default: false },
+        { key: 'dataEscrita', label: 'Escrito em', default: true },
+        { key: 'dataPublicacao', label: 'Publicação', default: true },
+        { key: 'estrutura', label: 'Estrutura', default: true },
+        { key: 'status', label: 'Status', default: true },
+        { key: 'elos', label: 'Elos', default: false },
+        { key: 'referencias', label: 'Referências', default: false },
+        { key: 'etiquetas', label: 'Etiquetas', default: false },
+        { key: 'notas', label: 'Notas', default: false },
     ],
     prosas: [
-        { key: 'dataEscrita',     label: 'Data',        default: true  },
-        { key: 'dataPublicacao',  label: 'Publicação',  default: true  },
-        { key: 'vinculo',         label: 'Vínculo',     default: true  },
-        { key: 'etiquetas',       label: 'Etiquetas',   default: false },
-        { key: 'notas',           label: 'Notas',       default: false },
+        { key: 'dataEscrita', label: 'Data', default: true },
+        { key: 'dataPublicacao', label: 'Publicação', default: true },
+        { key: 'vinculo', label: 'Vínculo', default: true },
+        { key: 'etiquetas', label: 'Etiquetas', default: false },
+        { key: 'notas', label: 'Notas', default: false },
     ],
 };
 
@@ -42,17 +42,18 @@ function lerEstado(tabela) {
     const def = DEFINICAO_COLUNAS[tabela];
     if (!def) return { ordem: [], ativas: [] };
 
-    const todasChaves = def.map(c => c.key);
+    const todasChaves = def.map((c) => c.key);
     const chavesValidas = new Set(todasChaves);
 
-    let ordem = null, ativas = null;
+    let ordem = null,
+        ativas = null;
     const raw = localStorage.getItem(LS_PREFIX + tabela);
     if (raw) {
         try {
             const salvo = JSON.parse(raw);
             if (salvo && Array.isArray(salvo.ordem) && Array.isArray(salvo.ativas)) {
-                ordem  = salvo.ordem.filter(k => chavesValidas.has(k));
-                ativas = salvo.ativas.filter(k => chavesValidas.has(k));
+                ordem = salvo.ordem.filter((k) => chavesValidas.has(k));
+                ativas = salvo.ativas.filter((k) => chavesValidas.has(k));
             }
         } catch {
             // JSON inválido — cai pro padrão abaixo
@@ -60,11 +61,13 @@ function lerEstado(tabela) {
     }
 
     if (!ordem) ordem = [...todasChaves];
-    if (!ativas) ativas = def.filter(c => c.default).map(c => c.key);
+    if (!ativas) ativas = def.filter((c) => c.default).map((c) => c.key);
 
     // Colunas novas (adicionadas a DEFINICAO_COLUNAS depois de já existir
     // uma escolha salva no navegador) entram no fim da ordem, desligadas.
-    todasChaves.forEach(k => { if (!ordem.includes(k)) ordem.push(k); });
+    todasChaves.forEach((k) => {
+        if (!ordem.includes(k)) ordem.push(k);
+    });
 
     return { ordem, ativas };
 }
@@ -82,7 +85,7 @@ function disparaAlteracao(tabela) {
 export function getColunasAtivas(tabela) {
     const { ordem, ativas } = lerEstado(tabela);
     const setAtivas = new Set(ativas);
-    return ordem.filter(k => setAtivas.has(k));
+    return ordem.filter((k) => setAtivas.has(k));
 }
 
 export function isColunaAtiva(tabela, key) {
@@ -97,8 +100,9 @@ export function toggleColuna(tabela, key, ativo) {
 
     const estado = lerEstado(tabela);
     const setAtivas = new Set(estado.ativas);
-    if (ativo) setAtivas.add(key); else setAtivas.delete(key);
-    estado.ativas = estado.ordem.filter(k => setAtivas.has(k));
+    if (ativo) setAtivas.add(key);
+    else setAtivas.delete(key);
+    estado.ativas = estado.ordem.filter((k) => setAtivas.has(k));
 
     salvarEstado(tabela, estado);
     disparaAlteracao(tabela);
@@ -129,11 +133,13 @@ export function renderSeletorColunas(tabela) {
     const def = DEFINICAO_COLUNAS[tabela];
     if (!def) return '';
 
-    const rotulos = Object.fromEntries(def.map(c => [c.key, c.label]));
+    const rotulos = Object.fromEntries(def.map((c) => [c.key, c.label]));
     const { ordem, ativas } = lerEstado(tabela);
     const setAtivas = new Set(ativas);
 
-    return ordem.map((key, i) => `
+    return ordem
+        .map(
+            (key, i) => `
         <div class="flex items-center gap-1 text-xs py-1 px-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap">
             <div class="flex flex-col leading-none mr-1">
                 <button type="button" onclick="moverColuna('${tabela}', '${key}', 'up')" ${i === 0 ? 'disabled' : ''}
@@ -148,5 +154,7 @@ export function renderSeletorColunas(tabela) {
                     onchange="toggleColuna('${tabela}', '${key}', this.checked)">
                 ${rotulos[key]}
             </label>
-        </div>`).join('');
+        </div>`,
+        )
+        .join('');
 }

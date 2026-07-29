@@ -54,9 +54,9 @@ Use quando você quer escolher poemas ou seções específicos sem precisar desc
 
 ## Resumo rápido
 
-| Situação | Formato recomendado |
-|---|---|
-| Analisar estrutura, arco, progressão de um livro | Aninhado (tudo) |
-| Processar textos um a um (comentar, traduzir, classificar) | Flat filtrado |
-| Escolher itens pontuais navegando a árvore | Flat via aba Estrutura |
-| Acervo grande que não cabe no contexto do modelo | Flat filtrado por livro/tema/ano |
+| Situação                                                   | Formato recomendado              |
+| ---------------------------------------------------------- | -------------------------------- |
+| Analisar estrutura, arco, progressão de um livro           | Aninhado (tudo)                  |
+| Processar textos um a um (comentar, traduzir, classificar) | Flat filtrado                    |
+| Escolher itens pontuais navegando a árvore                 | Flat via aba Estrutura           |
+| Acervo grande que não cabe no contexto do modelo           | Flat filtrado por livro/tema/ano |

@@ -3,8 +3,9 @@
 // Importado por: main.js
 // ============================================================
 
-import { db, save }        from './db.js';
-import { toBase64, abrirModalExclusao, gerarId, escapeHtml } from './utils.js';
+import { db, save } from './db.js';
+import { abrirModalExclusao, gerarId, escapeHtml } from './utils.js';
+import { salvarCapa, deletarCapa } from './capas.js';
 import { toggleModal, garantirModal } from './ui.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -14,56 +15,65 @@ let coletaneaSelecionadaId = null;
 // ─── Helpers ─────────────────────────────────────────────────
 
 function getColetaneas() {
-    return db.livros.filter(l => l.tipo === 'Coletânea')
+    return db.livros
+        .filter((l) => l.tipo === 'Coletânea')
         .sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999));
 }
 
 function getColetanea(id) {
-    return db.livros.find(l => l.id == id && l.tipo === 'Coletânea');
+    return db.livros.find((l) => l.id == id && l.tipo === 'Coletânea');
 }
 
 function getPartesDeColetanea(livroId) {
     return db.partes
-        .filter(p => p.livroId == livroId)
+        .filter((p) => p.livroId == livroId)
         .sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999));
 }
 
 function getItensDeColetanea(parteId) {
     return (db.itensColetanea || [])
-        .filter(i => i.parteId == parteId)
+        .filter((i) => i.parteId == parteId)
         .sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999));
 }
 
 function resolverItem(item) {
     if (item.textoOverride) return { ...item, textoResolvido: item.textoOverride };
     if (item.refId && item.refTipo) {
-        const colecao   = db[item.refTipo + 's'];
-        const original  = colecao?.find(x => x.id == item.refId);
-        return { ...item, textoResolvido: original?.texto || '', tituloResolvido: original?.titulo || item.titulo };
+        const colecao = db[item.refTipo + 's'];
+        const original = colecao?.find((x) => x.id == item.refId);
+        return {
+            ...item,
+            textoResolvido: original?.texto || '',
+            tituloResolvido: original?.titulo || item.titulo,
+        };
     }
     return item;
 }
 
 function origemLabel(item) {
     if (!item.refId) return 'exclusivo desta coletânea';
-    const colecao  = db[item.refTipo + 's'];
-    const original = colecao?.find(x => x.id == item.refId);
+    const colecao = db[item.refTipo + 's'];
+    const original = colecao?.find((x) => x.id == item.refId);
     if (!original) return 'referência não encontrada';
 
     let contexto = '';
     if (original.paiTipo === 'secao') {
-        const sec   = db.secoes.find(s => s.id == original.paiId);
-        const parte = sec?.paiTipo === 'parte' ? db.partes.find(p => p.id == sec.paiId) : null;
+        const sec = db.secoes.find((s) => s.id == original.paiId);
+        const parte = sec?.paiTipo === 'parte' ? db.partes.find((p) => p.id == sec.paiId) : null;
         const livro = parte
-            ? db.livros.find(l => l.id == parte.livroId)
-            : db.livros.find(l => l.id == sec?.paiId);
-        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo, sec?.titulo].filter(Boolean).join(' · ');
+            ? db.livros.find((l) => l.id == parte.livroId)
+            : db.livros.find((l) => l.id == sec?.paiId);
+        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo, sec?.titulo]
+            .filter(Boolean)
+            .join(' · ');
     } else if (original.paiTipo === 'parte') {
-        const parte = db.partes.find(p => p.id == original.paiId);
-        const livro = db.livros.find(l => l.id == parte?.livroId);
-        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo].filter(Boolean).join(' · ');
+        const parte = db.partes.find((p) => p.id == original.paiId);
+        const livro = db.livros.find((l) => l.id == parte?.livroId);
+        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo]
+            .filter(Boolean)
+            .join(' · ');
     } else if (original.paiTipo === 'livro') {
-        const livro = db.livros.find(l => l.id == original.paiId);
+        const livro = db.livros.find((l) => l.id == original.paiId);
         contexto = livro?.siglaOficial || livro?.titulo || '';
     }
 
@@ -97,12 +107,13 @@ function renderListaColetaneas() {
         return;
     }
 
-    container.innerHTML = lista.map(col => {
-        const partes     = getPartesDeColetanea(col.id);
-        const totalItens = partes.reduce((acc, p) => acc + getItensDeColetanea(p.id).length, 0);
-        const ativa      = col.id == coletaneaSelecionadaId;
+    container.innerHTML = lista
+        .map((col) => {
+            const partes = getPartesDeColetanea(col.id);
+            const totalItens = partes.reduce((acc, p) => acc + getItensDeColetanea(p.id).length, 0);
+            const ativa = col.id == coletaneaSelecionadaId;
 
-        return `
+            return `
         <div onclick="selecionarColetanea(${col.id})"
              style="cursor:pointer; padding:12px 14px; border-radius:var(--border-radius-lg);
                     border:0.5px solid ${ativa ? '#185FA5' : 'var(--color-border-tertiary)'};
@@ -117,7 +128,8 @@ function renderListaColetaneas() {
                 SEQ ${col.sequencia || '—'} · ${totalItens} iten${totalItens !== 1 ? 's' : ''}
             </div>
         </div>`;
-    }).join('');
+        })
+        .join('');
 }
 
 function renderEditorVazio() {
@@ -133,7 +145,7 @@ function renderEditorColetanea(livroId) {
     const editor = document.getElementById('editor-coletanea');
     if (!editor) return;
 
-    const col    = getColetanea(livroId);
+    const col = getColetanea(livroId);
     if (!col) return;
 
     const partes = getPartesDeColetanea(livroId);
@@ -149,9 +161,10 @@ function renderEditorColetanea(livroId) {
                            border-radius:var(--border-radius-md); background:#185FA5;
                            color:#fff; cursor:pointer;">+ nova parte</button>
         </div>
-        ${partes.length === 0
-            ? `<p style="font-size:13px; color:var(--color-text-tertiary);">Nenhuma parte ainda. Adicione a primeira.</p>`
-            : partes.map(p => renderParteColetanea(p)).join('')
+        ${
+            partes.length === 0
+                ? `<p style="font-size:13px; color:var(--color-text-tertiary);">Nenhuma parte ainda. Adicione a primeira.</p>`
+                : partes.map((p) => renderParteColetanea(p)).join('')
         }`;
 }
 
@@ -160,9 +173,9 @@ function renderParteColetanea(parte) {
 
     const refLabel = parte.refId
         ? (() => {
-            const original = db.partes.find(x => x.id == parte.refId);
-            const livro    = original ? db.livros.find(l => l.id == original.livroId) : null;
-            return `inspirada em: ${escapeHtml(original?.titulo) || '?'} · ${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'}`;
+              const original = db.partes.find((x) => x.id == parte.refId);
+              const livro = original ? db.livros.find((l) => l.id == original.livroId) : null;
+              return `inspirada em: ${escapeHtml(original?.titulo) || '?'} · ${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'}`;
           })()
         : 'parte nova · exclusiva desta coletânea';
 
@@ -212,13 +225,14 @@ function renderParteColetanea(parte) {
 
 function renderItemLinha(item, idx, total) {
     const badges = {
-        poema:  'background:#E6F1FB; color:#0C447C;',
-        prosa:  'background:#E1F5EE; color:#085041;',
+        poema: 'background:#E6F1FB; color:#0C447C;',
+        prosa: 'background:#E1F5EE; color:#085041;',
     };
-    const badgeStyle = item.refId ? (badges[item.refTipo] || 'background:#F1EFE8; color:#444441;')
-                                  : 'background:#FAEEDA; color:#633806;';
-    const tipoLabel  = item.refId ? (item.refTipo || '?') : 'inédito';
-    const origem     = origemLabel(item);
+    const badgeStyle = item.refId
+        ? badges[item.refTipo] || 'background:#F1EFE8; color:#444441;'
+        : 'background:#FAEEDA; color:#633806;';
+    const tipoLabel = item.refId ? item.refTipo || '?' : 'inédito';
+    const origem = origemLabel(item);
     const temOverride = !!item.textoOverride;
 
     return `
@@ -233,12 +247,20 @@ function renderItemLinha(item, idx, total) {
         </span>
         <span style="font-size:10px; color:var(--color-text-tertiary); flex-shrink:0;">${origem}</span>
         <div style="display:flex; gap:4px; flex-shrink:0;">
-            ${idx > 0 ? `<button onclick="moverItem(${item.id},-1)"
+            ${
+                idx > 0
+                    ? `<button onclick="moverItem(${item.id},-1)"
                 style="font-size:10px; padding:2px 6px; border:0.5px solid var(--color-border-tertiary);
-                       border-radius:4px; background:transparent; color:var(--color-text-tertiary); cursor:pointer;">↑</button>` : ''}
-            ${idx < total - 1 ? `<button onclick="moverItem(${item.id},1)"
+                       border-radius:4px; background:transparent; color:var(--color-text-tertiary); cursor:pointer;">↑</button>`
+                    : ''
+            }
+            ${
+                idx < total - 1
+                    ? `<button onclick="moverItem(${item.id},1)"
                 style="font-size:10px; padding:2px 6px; border:0.5px solid var(--color-border-tertiary);
-                       border-radius:4px; background:transparent; color:var(--color-text-tertiary); cursor:pointer;">↓</button>` : ''}
+                       border-radius:4px; background:transparent; color:var(--color-text-tertiary); cursor:pointer;">↓</button>`
+                    : ''
+            }
             <button onclick="editarItem(${item.id})"
                 style="font-size:10px; padding:2px 6px; border:0.5px solid var(--color-border-secondary);
                        border-radius:4px; background:transparent; color:var(--color-text-secondary); cursor:pointer;">editar</button>
@@ -261,13 +283,14 @@ export function selecionarColetanea(id) {
 export async function prepararNovaParte(livroId) {
     coletaneaSelecionadaId = livroId;
     await garantirModal('modal-col-parte');
-    document.getElementById('cp-edit-id').value    = '';
-    document.getElementById('cp-livro-id').value   = livroId;
-    document.getElementById('cp-titulo').value     = '';
-    document.getElementById('cp-sequencia').value  = '';
-    document.getElementById('cp-capa-desc').value  = '';
-    document.getElementById('cp-abertura').value   = '';
-    document.getElementById('cp-nota').value       = '';
+    document.getElementById('cp-edit-id').value = '';
+    document.getElementById('cp-livro-id').value = livroId;
+    document.getElementById('cp-titulo').value = '';
+    document.getElementById('cp-sequencia').value = '';
+    document.getElementById('cp-capa-desc').value = '';
+    document.getElementById('cp-abertura').value = '';
+    document.getElementById('cp-nota').value = '';
+    document.getElementById('cp-remover-capa').checked = false;
     preencherSelectPartes('cp-ref');
     document.getElementById('cp-ref').value = '';
     document.getElementById('modal-col-parte-titulo').innerText = 'Nova parte da coletânea';
@@ -275,32 +298,51 @@ export async function prepararNovaParte(livroId) {
 }
 
 export async function editarParteColetanea(id) {
-    const p = db.partes.find(x => x.id == id);
+    const p = db.partes.find((x) => x.id == id);
     if (!p) return;
     await garantirModal('modal-col-parte');
-    document.getElementById('cp-edit-id').value    = p.id;
-    document.getElementById('cp-livro-id').value   = p.livroId;
-    document.getElementById('cp-titulo').value     = p.titulo;
-    document.getElementById('cp-sequencia').value  = p.sequencia || '';
-    document.getElementById('cp-capa-desc').value  = p.capaDesc || '';
-    document.getElementById('cp-abertura').value   = p.abertura || '';
-    document.getElementById('cp-nota').value       = p.nota || '';
+    document.getElementById('cp-edit-id').value = p.id;
+    document.getElementById('cp-livro-id').value = p.livroId;
+    document.getElementById('cp-titulo').value = p.titulo;
+    document.getElementById('cp-sequencia').value = p.sequencia || '';
+    document.getElementById('cp-capa-desc').value = p.capaDesc || '';
+    document.getElementById('cp-abertura').value = p.abertura || '';
+    document.getElementById('cp-nota').value = p.nota || '';
+    document.getElementById('cp-remover-capa').checked = false;
     preencherSelectPartes('cp-ref');
-    setTimeout(() => { document.getElementById('cp-ref').value = p.refId || ''; }, 0);
+    setTimeout(() => {
+        document.getElementById('cp-ref').value = p.refId || '';
+    }, 0);
     document.getElementById('modal-col-parte-titulo').innerText = 'Editar parte';
     toggleModal('modal-col-parte');
 }
 
+/**
+ * Remove a Parte `parteId` e todos os itens de Coletânea que apontam pra
+ * ela. Função pura: recebe os arrays, devolve novos arrays filtrados —
+ * não muta `db` nem chama save(). Isola a regra de cascata (Parte
+ * apagada → itens dela somem junto) do lado de efeitos (DOM/persistência).
+ */
+export function removerParteEItens(partes, itensColetanea, parteId) {
+    return {
+        partes: partes.filter((p) => p.id != parteId),
+        itensColetanea: (itensColetanea || []).filter((i) => i.parteId != parteId),
+    };
+}
+
 export function deletarParteColetanea(id) {
-    const parte  = db.partes.find(p => p.id == id);
+    const parte = db.partes.find((p) => p.id == id);
     const titulo = parte?.titulo || `#${id}`;
-    const total  = (db.itensColetanea || []).filter(i => i.parteId == id).length;
-    const rotulo = total > 0 ? `Parte da coletânea · ${total} iten${total !== 1 ? 's' : ''} serão removidos` : 'Parte da coletânea';
+    const total = (db.itensColetanea || []).filter((i) => i.parteId == id).length;
+    const rotulo =
+        total > 0
+            ? `Parte da coletânea · ${total} iten${total !== 1 ? 's' : ''} serão removidos`
+            : 'Parte da coletânea';
 
     abrirModalExclusao(titulo, rotulo, () => {
-        db.partes = db.partes.filter(p => p.id != id);
-        if (!db.itensColetanea) db.itensColetanea = [];
-        db.itensColetanea = db.itensColetanea.filter(i => i.parteId != id);
+        const resultado = removerParteEItens(db.partes, db.itensColetanea, id);
+        db.partes = resultado.partes;
+        db.itensColetanea = resultado.itensColetanea;
         save();
         renderEditorColetanea(coletaneaSelecionadaId);
     });
@@ -309,15 +351,18 @@ export function deletarParteColetanea(id) {
 function preencherSelectPartes(selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return;
-    const partesOriginais = db.partes.filter(p => {
-        const livro = db.livros.find(l => l.id == p.livroId);
+    const partesOriginais = db.partes.filter((p) => {
+        const livro = db.livros.find((l) => l.id == p.livroId);
         return livro && livro.tipo !== 'Coletânea';
     });
-    sel.innerHTML = '<option value="">— Parte nova (sem referência) —</option>' +
-        partesOriginais.map(p => {
-            const livro = db.livros.find(l => l.id == p.livroId);
-            return `<option value="${p.id}">${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'} · ${escapeHtml(p.titulo)}</option>`;
-        }).join('');
+    sel.innerHTML =
+        '<option value="">— Parte nova (sem referência) —</option>' +
+        partesOriginais
+            .map((p) => {
+                const livro = db.livros.find((l) => l.id == p.livroId);
+                return `<option value="${p.id}">${escapeHtml(livro?.siglaOficial || livro?.titulo) || '?'} · ${escapeHtml(p.titulo)}</option>`;
+            })
+            .join('');
 }
 
 export function initFormColParte() {
@@ -327,26 +372,35 @@ export function initFormColParte() {
         e.preventDefault();
         const idInput = document.getElementById('cp-edit-id').value;
         const livroId = document.getElementById('cp-livro-id').value;
-        const id      = idInput ? parseInt(idInput) : gerarId();
+        const id = idInput ? parseInt(idInput) : gerarId();
         const refIdRaw = document.getElementById('cp-ref').value;
 
         const capaFile = document.getElementById('cp-capa').files[0];
-        const capaBase64 = capaFile ? await toBase64(capaFile) : (idInput ? db.partes.find(x => x.id == parseInt(idInput))?.capa || null : null);
+        const removerCapa = document.getElementById('cp-remover-capa').checked;
+        const capaAtual = idInput ? db.partes.find((x) => x.id == parseInt(idInput))?.capa : null;
+        let capaFinal;
+        if (removerCapa) {
+            await deletarCapa(capaAtual);
+            capaFinal = null;
+        } else {
+            const novaCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
+            capaFinal = novaCapaId ?? capaAtual;
+        }
 
         const dados = {
             id,
             livroId,
-            titulo:    document.getElementById('cp-titulo').value,
+            titulo: document.getElementById('cp-titulo').value,
             sequencia: parseInt(document.getElementById('cp-sequencia').value) || 0,
-            capaDesc:  document.getElementById('cp-capa-desc').value.trim() || null,
-            capa:      capaBase64,
-            abertura:  document.getElementById('cp-abertura').value.trim() || null,
-            nota:      document.getElementById('cp-nota').value,
-            refId:     refIdRaw ? parseInt(refIdRaw) : null
+            capaDesc: document.getElementById('cp-capa-desc').value.trim() || null,
+            capa: capaFinal,
+            abertura: document.getElementById('cp-abertura').value.trim() || null,
+            nota: document.getElementById('cp-nota').value,
+            refId: refIdRaw ? parseInt(refIdRaw) : null,
         };
 
         if (idInput) {
-            const idx = db.partes.findIndex(x => x.id == id);
+            const idx = db.partes.findIndex((x) => x.id == id);
             if (idx !== -1) db.partes[idx] = dados;
         } else {
             db.partes.push(dados);
@@ -362,12 +416,12 @@ export function initFormColParte() {
 
 export async function prepararNovoItem(parteId) {
     await garantirModal('modal-col-item');
-    document.getElementById('ci-edit-id').value          = '';
-    document.getElementById('ci-parte-id').value         = parteId;
-    document.getElementById('ci-titulo').value           = '';
-    document.getElementById('ci-texto-override').value   = '';
-    document.getElementById('ci-sequencia').value        = '';
-    document.getElementById('ci-ref-tipo').value         = 'poema';
+    document.getElementById('ci-edit-id').value = '';
+    document.getElementById('ci-parte-id').value = parteId;
+    document.getElementById('ci-titulo').value = '';
+    document.getElementById('ci-texto-override').value = '';
+    document.getElementById('ci-sequencia').value = '';
+    document.getElementById('ci-ref-tipo').value = 'poema';
     document.getElementById('ci-override-area').classList.add('hidden');
     preencherSelectItens('poema');
     document.getElementById('modal-col-item-titulo').innerText = 'Adicionar item';
@@ -376,20 +430,22 @@ export async function prepararNovoItem(parteId) {
 
 export async function editarItem(id) {
     if (!db.itensColetanea) return;
-    const item = db.itensColetanea.find(x => x.id == id);
+    const item = db.itensColetanea.find((x) => x.id == id);
     if (!item) return;
     await garantirModal('modal-col-item');
 
-    document.getElementById('ci-edit-id').value        = item.id;
-    document.getElementById('ci-parte-id').value       = item.parteId;
-    document.getElementById('ci-titulo').value          = item.titulo;
-    document.getElementById('ci-sequencia').value       = item.sequencia || '';
-    document.getElementById('ci-texto-override').value  = item.textoOverride || '';
-    document.getElementById('ci-ref-tipo').value        = item.refTipo || 'poema';
+    document.getElementById('ci-edit-id').value = item.id;
+    document.getElementById('ci-parte-id').value = item.parteId;
+    document.getElementById('ci-titulo').value = item.titulo;
+    document.getElementById('ci-sequencia').value = item.sequencia || '';
+    document.getElementById('ci-texto-override').value = item.textoOverride || '';
+    document.getElementById('ci-ref-tipo').value = item.refTipo || 'poema';
     document.getElementById('ci-override-area').classList.toggle('hidden', !item.textoOverride);
 
     preencherSelectItens(item.refTipo || 'poema');
-    setTimeout(() => { document.getElementById('ci-ref-id').value = item.refId || ''; }, 0);
+    setTimeout(() => {
+        document.getElementById('ci-ref-id').value = item.refId || '';
+    }, 0);
 
     document.getElementById('modal-col-item-titulo').innerText = 'Editar item';
     toggleModal('modal-col-item');
@@ -397,35 +453,51 @@ export async function editarItem(id) {
 
 export function deletarItemColetanea(id) {
     if (!db.itensColetanea) return;
-    const item   = db.itensColetanea.find(i => i.id == id);
+    const item = db.itensColetanea.find((i) => i.id == id);
     const titulo = item?.titulo || `#${id}`;
 
     abrirModalExclusao(titulo, 'Item da coletânea', () => {
-        db.itensColetanea = db.itensColetanea.filter(i => i.id != id);
+        db.itensColetanea = db.itensColetanea.filter((i) => i.id != id);
         save();
         renderEditorColetanea(coletaneaSelecionadaId);
     });
 }
 
-export function moverItem(id, direcao) {
-    if (!db.itensColetanea) return;
-    const item = db.itensColetanea.find(x => x.id == id);
-    if (!item) return;
+/**
+ * Troca a sequência do item com o vizinho na direção pedida (-1 = subir,
+ * +1 = descer) e renumera todo o grupo de 1..n. Função pura: só muta os
+ * objetos do array recebido, não chama save() nem toca em DOM — o que
+ * permite testar a matemática de reordenação isoladamente.
+ * Retorna false se não havia vizinho naquela direção (já está na ponta)
+ * ou se o item não foi encontrado.
+ */
+export function calcularReordenacaoItem(itensColetanea, id, direcao) {
+    const item = itensColetanea.find((x) => x.id == id);
+    if (!item) return false;
 
-    const irmaos = db.itensColetanea
-        .filter(i => i.parteId == item.parteId)
+    const irmaos = itensColetanea
+        .filter((i) => i.parteId == item.parteId)
         .sort((a, b) => (parseInt(a.sequencia) || 0) - (parseInt(b.sequencia) || 0));
 
-    const idx  = irmaos.findIndex(i => i.id == id);
+    const idx = irmaos.findIndex((i) => i.id == id);
     const alvo = irmaos[idx + direcao];
-    if (!alvo) return;
+    if (!alvo) return false;
 
-    const seqTemp  = item.sequencia;
+    const seqTemp = item.sequencia;
     item.sequencia = alvo.sequencia;
     alvo.sequencia = seqTemp;
 
     irmaos.sort((a, b) => (parseInt(a.sequencia) || 0) - (parseInt(b.sequencia) || 0));
-    irmaos.forEach((i, n) => { i.sequencia = n + 1; });
+    irmaos.forEach((i, n) => {
+        i.sequencia = n + 1;
+    });
+    return true;
+}
+
+export function moverItem(id, direcao) {
+    if (!db.itensColetanea) return;
+    const moveu = calcularReordenacaoItem(db.itensColetanea, id, direcao);
+    if (!moveu) return;
 
     save();
     renderEditorColetanea(coletaneaSelecionadaId);
@@ -440,11 +512,11 @@ export function toggleOverride() {
     const area = document.getElementById('ci-override-area');
     area.classList.toggle('hidden');
     if (!area.classList.contains('hidden')) {
-        const refId   = document.getElementById('ci-ref-id').value;
-        const tipo    = document.getElementById('ci-ref-tipo').value;
-        const campo   = document.getElementById('ci-texto-override');
+        const refId = document.getElementById('ci-ref-id').value;
+        const tipo = document.getElementById('ci-ref-tipo').value;
+        const campo = document.getElementById('ci-texto-override');
         if (!campo.value && refId) {
-            const original = (db[tipo + 's'] || []).find(x => x.id == refId);
+            const original = (db[tipo + 's'] || []).find((x) => x.id == refId);
             if (original?.texto) campo.value = original.texto;
         }
     }
@@ -454,11 +526,14 @@ function preencherSelectItens(tipo) {
     const sel = document.getElementById('ci-ref-id');
     if (!sel) return;
     const colecao = db[tipo + 's'] || [];
-    sel.innerHTML = '<option value="">— Inédito (sem referência) —</option>' +
-        colecao.map(item => {
-            const origem = origemLabel({ refId: item.id, refTipo: tipo });
-            return `<option value="${item.id}">${escapeHtml(item.titulo)} · ${origem}</option>`;
-        }).join('');
+    sel.innerHTML =
+        '<option value="">— Inédito (sem referência) —</option>' +
+        colecao
+            .map((item) => {
+                const origem = origemLabel({ refId: item.id, refTipo: tipo });
+                return `<option value="${item.id}">${escapeHtml(item.titulo)} · ${origem}</option>`;
+            })
+            .join('');
 }
 
 export function initFormColItem() {
@@ -468,21 +543,21 @@ export function initFormColItem() {
         e.preventDefault();
         if (!db.itensColetanea) db.itensColetanea = [];
 
-        const idInput  = document.getElementById('ci-edit-id').value;
-        const id       = idInput ? parseInt(idInput) : gerarId();
-        const parteId  = parseInt(document.getElementById('ci-parte-id').value);
+        const idInput = document.getElementById('ci-edit-id').value;
+        const id = idInput ? parseInt(idInput) : gerarId();
+        const parteId = parseInt(document.getElementById('ci-parte-id').value);
         const refIdRaw = document.getElementById('ci-ref-id').value;
-        const refTipo  = document.getElementById('ci-ref-tipo').value;
-        const refId    = refIdRaw ? parseInt(refIdRaw) : null;
+        const refTipo = document.getElementById('ci-ref-tipo').value;
+        const refId = refIdRaw ? parseInt(refIdRaw) : null;
         const override = document.getElementById('ci-texto-override').value.trim();
 
         let titulo = document.getElementById('ci-titulo').value.trim();
         if (!titulo && refId) {
-            const original = (db[refTipo + 's'] || []).find(x => x.id == refId);
+            const original = (db[refTipo + 's'] || []).find((x) => x.id == refId);
             titulo = original?.titulo || '';
         }
 
-        const irmaos = db.itensColetanea.filter(i => i.parteId == parteId && i.id != id);
+        const irmaos = db.itensColetanea.filter((i) => i.parteId == parteId && i.id != id);
         const maxSeq = irmaos.reduce((m, i) => Math.max(m, parseInt(i.sequencia) || 0), 0);
 
         const dados = {
@@ -490,13 +565,13 @@ export function initFormColItem() {
             parteId,
             titulo,
             refId,
-            refTipo:       refId ? refTipo : null,
+            refTipo: refId ? refTipo : null,
             textoOverride: override || null,
-            sequencia:     parseInt(document.getElementById('ci-sequencia').value) || maxSeq + 1
+            sequencia: parseInt(document.getElementById('ci-sequencia').value) || maxSeq + 1,
         };
 
         if (idInput) {
-            const idx = db.itensColetanea.findIndex(x => x.id == id);
+            const idx = db.itensColetanea.findIndex((x) => x.id == id);
             if (idx !== -1) db.itensColetanea[idx] = dados;
         } else {
             db.itensColetanea.push(dados);
@@ -515,10 +590,10 @@ export function initFormColItem() {
 export function getColetaneasDeItem(refTipo, refId) {
     if (!refId) return [];
     return (db.itensColetanea || [])
-        .filter(i => i.refTipo === refTipo && i.refId == refId)
-        .map(item => {
-            const parte = db.partes.find(p => p.id == item.parteId);
-            const col   = parte ? getColetanea(parte.livroId) : null;
+        .filter((i) => i.refTipo === refTipo && i.refId == refId)
+        .map((item) => {
+            const parte = db.partes.find((p) => p.id == item.parteId);
+            const col = parte ? getColetanea(parte.livroId) : null;
             if (!col) return null;
             return { coletaneaId: col.id, coletaneaTitulo: col.titulo, parteTitulo: parte.titulo };
         })
@@ -530,9 +605,9 @@ export function getColetaneasDeItem(refTipo, refId) {
 export function exportarColetaneaResolvida(livroId) {
     const col = getColetanea(livroId);
     if (!col) return null;
-    const partes = getPartesDeColetanea(livroId).map(parte => ({
+    const partes = getPartesDeColetanea(livroId).map((parte) => ({
         ...parte,
-        itens: getItensDeColetanea(parte.id).map(item => resolverItem(item))
+        itens: getItensDeColetanea(parte.id).map((item) => resolverItem(item)),
     }));
     return { ...col, partes };
 }

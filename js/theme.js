@@ -11,7 +11,7 @@
 
 const LS_CHAVE = 'arquivoPoetico_tema';
 const rotulos = { auto: 'Automático', claro: 'Claro', escuro: 'Escuro' };
-const icones  = { auto: '🌓', claro: '☀️', escuro: '🌙' };
+const icones = { auto: '🌓', claro: '☀️', escuro: '🌙' };
 
 function getPreferencia() {
     return localStorage.getItem(LS_CHAVE) || 'auto';
@@ -33,7 +33,7 @@ function aplicar(pref) {
     const botao = document.getElementById('btn-tema');
     if (botao) botao.textContent = `${icones[pref]} Tema`;
 
-    document.querySelectorAll('#painel-tema [data-tema]').forEach(el => {
+    document.querySelectorAll('#painel-tema [data-tema]').forEach((el) => {
         const ativo = el.dataset.tema === pref;
         el.classList.toggle('bg-blue-50', ativo);
         el.classList.toggle('dark:bg-blue-950', ativo);
@@ -42,7 +42,9 @@ function aplicar(pref) {
         el.classList.toggle('font-bold', ativo);
     });
 
-    window.dispatchEvent(new CustomEvent('tema:alterado', { detail: { pref, efetivo: temaEfetivo(pref) } }));
+    window.dispatchEvent(
+        new CustomEvent('tema:alterado', { detail: { pref, efetivo: temaEfetivo(pref) } }),
+    );
 }
 
 // Chamada pelo botão/popover (ver renderPainelTema abaixo)
@@ -55,11 +57,15 @@ export function setTema(pref) {
 // togglePainel() já usado em Colunas/Filtro de datas.
 export function renderPainelTema() {
     const atual = getPreferencia();
-    return ['auto', 'claro', 'escuro'].map(pref => `
+    return ['auto', 'claro', 'escuro']
+        .map(
+            (pref) => `
         <button type="button" data-tema="${pref}" onclick="setTema('${pref}')"
             class="w-full text-left flex items-center gap-2 text-xs py-1.5 px-2 rounded hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-200 whitespace-nowrap ${pref === atual ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold' : ''}">
             ${icones[pref]} ${rotulos[pref]}
-        </button>`).join('');
+        </button>`,
+        )
+        .join('');
 }
 
 export function initTema() {
