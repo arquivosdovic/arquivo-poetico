@@ -359,9 +359,10 @@ export async function prepararNovo(tipo) {
         // resetTagsProsa e resetPessoasProsa são importadas dinamicamente
         // pra evitar ciclo de importação (editor → ui não existe)
         import('./editor.js').then(
-            ({ resetTagsProsa, resetPessoasProsa, atualizarDatalistProsa }) => {
+            ({ resetTagsProsa, resetPessoasProsa, resetGeneroProsa, atualizarDatalistProsa }) => {
                 resetTagsProsa();
                 resetPessoasProsa();
+                resetGeneroProsa();
                 atualizarDatalistProsa();
             },
         );

@@ -35,6 +35,8 @@ import {
     carregarTagsProsa,
     resetPessoasProsa,
     carregarPessoasProsa,
+    resetGeneroProsa,
+    carregarGeneroProsa,
     atualizarDatalistProsa,
 } from './editor.js';
 
@@ -518,6 +520,7 @@ export function initFormProsa() {
             notas: document.getElementById('pr-notas').value,
             sinalizacoes: document.getElementById('pr-sinal').value,
             pessoas: document.getElementById('pr-pessoas').value,
+            genero: document.getElementById('pr-genero').value,
             publicado: document.getElementById('pr-pub').checked,
         };
 
@@ -556,6 +559,7 @@ export function initFormProsa() {
         toggleModal('modal-prosa');
         resetTagsProsa();
         resetPessoasProsa();
+        resetGeneroProsa();
         form.reset();
     };
 }
@@ -590,6 +594,7 @@ export async function editarProsa(id) {
 
     carregarTagsProsa(pr.sinalizacoes);
     carregarPessoasProsa(pr.pessoas);
+    carregarGeneroProsa(pr.genero);
     atualizarDatalistProsa();
     renderColetaneasInfo('pr-coletaneas-info', 'prosa', pr.id);
     document.getElementById('modal-prosa-titulo').innerText = 'Editar Prosa';

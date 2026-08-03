@@ -487,8 +487,12 @@ function decorarCamposBusca(item, extraLivros = '') {
 
 // ─── Colunas dinâmicas de Poemas/Prosas ────────────────────────
 
-// Badges de etiqueta (reaproveitado nas colunas opcionais "Etiquetas")
-function badgesEtiquetas(sinalizacoes) {
+// Badges de etiqueta (reaproveitado nas colunas opcionais "Etiquetas" e
+// "Gênero" — mesma lógica de string "a, b, c" → chips, cor customizável).
+function badgesEtiquetas(
+    sinalizacoes,
+    corClasse = 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
+) {
     if (!sinalizacoes) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
     return (
         sinalizacoes
@@ -497,7 +501,7 @@ function badgesEtiquetas(sinalizacoes) {
             .filter(Boolean)
             .map(
                 (t) =>
-                    `<span class="text-[9px] bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
+                    `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
             )
             .join('') || '<span class="text-gray-300 dark:text-slate-600">—</span>'
     );
@@ -1466,6 +1470,8 @@ export function renderProsas() {
         dataPublicacao: (pr) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${pr.dataPublicacao ? formatarDataParcial(pr.dataPublicacao) : '—'}</td>`,
         etiquetas: (pr) => `<td class="p-4">${badgesEtiquetas(pr.sinalizacoes)}</td>`,
+        genero: (pr) =>
+            `<td class="p-4">${badgesEtiquetas(pr.genero, 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400')}</td>`,
         notas: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.notas)}</td>`,
     };

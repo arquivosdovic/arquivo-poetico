@@ -4,7 +4,12 @@
 // ============================================================
 
 import { db } from './db.js';
-import { extrairSinalizacoesUnicas, extrairPessoasUnicas, escapeHtml } from './utils.js';
+import {
+    extrairSinalizacoesUnicas,
+    extrairPessoasUnicas,
+    extrairGenerosUnicos,
+    escapeHtml,
+} from './utils.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -153,6 +158,13 @@ const grupoPessoasProsa = criarGrupoDeTags({
     corClasse: 'bg-rose-500',
     nomeFuncaoRemover: 'removerPessoaProsa',
 });
+const grupoGeneroProsa = criarGrupoDeTags({
+    inputId: 'pr-genero-input',
+    containerId: 'pr-genero-container',
+    hiddenInputId: 'pr-genero',
+    corClasse: 'bg-amber-600',
+    nomeFuncaoRemover: 'removerGeneroProsa',
+});
 
 // ─── Tags (Sinalizações) ─────────────────────────────────────
 
@@ -217,6 +229,7 @@ export function carregarPessoas(pessoasStr) {
 export function atualizarDatalistProsa() {
     const sinaisUnicos = extrairSinalizacoesUnicas([...db.poemas, ...(db.prosas || [])]);
     const pessoasUnicas = extrairPessoasUnicas([...db.poemas, ...(db.prosas || [])]);
+    const generosUnicos = extrairGenerosUnicos(db.prosas || []);
 
     // Datalists dentro do modal de Prosa (só existem depois que o modal
     // é carregado ao menos uma vez — ver modal-prosa.html / modais.js)
@@ -245,6 +258,19 @@ export function atualizarDatalistProsa() {
     if (datalistPessoasBulk) {
         datalistPessoasBulk.innerHTML = pessoasUnicas
             .map((nome) => `<option value="${escapeHtml(nome)}">`)
+            .join('');
+    }
+
+    const datalistGenero = document.getElementById('sugestoes-genero-prosa');
+    if (datalistGenero) {
+        datalistGenero.innerHTML = generosUnicos
+            .map((g) => `<option value="${escapeHtml(g)}">`)
+            .join('');
+    }
+    const datalistGeneroBulk = document.getElementById('sugestoes-genero-bulk-prosa');
+    if (datalistGeneroBulk) {
+        datalistGeneroBulk.innerHTML = generosUnicos
+            .map((g) => `<option value="${escapeHtml(g)}">`)
             .join('');
     }
 }
@@ -279,6 +305,24 @@ export function resetPessoasProsa() {
 }
 export function carregarPessoasProsa(pessoasStr) {
     grupoPessoasProsa.carregar(pessoasStr);
+}
+
+// ─── Gênero (Cartas, Diálogos, Ensaios, Prosas poéticas...) ───
+
+export function adicionarGeneroProsa(valor = null) {
+    grupoGeneroProsa.adicionar(valor);
+}
+export function removerGeneroProsa(genero) {
+    grupoGeneroProsa.remover(genero);
+}
+export function renderizarGeneroProsa() {
+    grupoGeneroProsa.renderizar();
+}
+export function resetGeneroProsa() {
+    grupoGeneroProsa.reset();
+}
+export function carregarGeneroProsa(generoStr) {
+    grupoGeneroProsa.carregar(generoStr);
 }
 
 export function initEditor() {
@@ -402,6 +446,15 @@ export function initEditor() {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 adicionarPessoaProsa();
+            }
+        });
+    }
+    const inputGeneroProsa = document.getElementById('pr-genero-input');
+    if (inputGeneroProsa) {
+        inputGeneroProsa.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionarGeneroProsa();
             }
         });
     }

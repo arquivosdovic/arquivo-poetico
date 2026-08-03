@@ -951,6 +951,7 @@ export function filtrarTextos(lista, query) {
             item.ano,
             item.sinalizacoes,
             item.pessoas,
+            item.genero,
             item.notas,
             item._livros,
         ]
@@ -993,6 +994,24 @@ export function filtrarPorConteudo(lista, query) {
 }
 
 // Recebe o array db.poemas e retorna todas as sinalizações únicas ordenadas
+// Campo "Gênero" da Prosa (Cartas, Diálogos, Ensaios, Prosas poéticas...).
+// Mesmo padrão de extração das Sinalizações, mas restrito a prosas —
+// gênero não se aplica a Poema.
+export function extrairGenerosUnicos(prosas) {
+    const generos = new Set();
+    prosas.forEach((p) => {
+        if (p.genero) {
+            const lista = Array.isArray(p.genero)
+                ? p.genero
+                : p.genero.split(',').map((s) => s.trim());
+            lista.forEach((g) => {
+                if (g) generos.add(g);
+            });
+        }
+    });
+    return Array.from(generos).sort();
+}
+
 export function extrairSinalizacoesUnicas(poemas) {
     const sinais = new Set();
     poemas.forEach((p) => {

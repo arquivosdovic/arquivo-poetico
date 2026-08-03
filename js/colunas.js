@@ -29,6 +29,7 @@ export const DEFINICAO_COLUNAS = {
         { key: 'dataEscrita', label: 'Data', default: true },
         { key: 'dataPublicacao', label: 'Publicação', default: true },
         { key: 'vinculo', label: 'Vínculo', default: true },
+        { key: 'genero', label: 'Gênero', default: true },
         { key: 'etiquetas', label: 'Etiquetas', default: false },
         { key: 'notas', label: 'Notas', default: false },
     ],

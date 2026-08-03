@@ -108,6 +108,8 @@ import {
     removerTagProsa,
     adicionarPessoaProsa,
     removerPessoaProsa,
+    adicionarGeneroProsa,
+    removerGeneroProsa,
 } from './editor.js';
 import {
     initFormLivro,
@@ -409,6 +411,8 @@ window.adicionarTagProsa = adicionarTagProsa;
 window.removerTagProsa = removerTagProsa;
 window.adicionarPessoaProsa = adicionarPessoaProsa;
 window.removerPessoaProsa = removerPessoaProsa;
+window.adicionarGeneroProsa = adicionarGeneroProsa;
+window.removerGeneroProsa = removerGeneroProsa;
 window.applyStyle = applyStyle;
 window.wrapText = wrapText;
 // Debounce de 200ms: cada tecla digitada dispara um renderPoemas()/
